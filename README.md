@@ -39,7 +39,9 @@ someone is staring at it, waiting for a latte that said 4 minutes 12 minutes ago
 
 The third kit, [Flowchart Kit](https://github.com/jnemargut/flowchart-kit), is a low-fi canvas for flows, sticky
 notes and presenting. Put any screen or whole flow on a board as a card, next to the storyboard panel where someone
-is using it. Copy a screen here and paste it onto a board: it lands as a live card that follows this file.
+is using it. Copy a screen here and paste it onto a board: it lands as a live card that follows this file. It also
+comes with `/low-fi-think`, which takes a request ("the PM wants X, here are the Jiras") and builds whatever mix of
+storyboards, wireframes and a board the thinking needs.
 
 ## Install (about 30 seconds)
 

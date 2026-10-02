@@ -34,7 +34,7 @@ cpSync("node_modules/@resvg/resvg-wasm/index_bg.wasm", `${OUT}/scripts/resvg.was
 
 // fonts used for rendering (the editor bundles its own copies)
 mkdirSync(`${OUT}/assets/fonts`, { recursive: true });
-for (const f of ["PermanentMarker-Regular.ttf", "PatrickHand-Regular.ttf", "LICENSE-Apache-PermanentMarker.txt", "OFL-PatrickHand.txt"])
+for (const f of ["PermanentMarker-Regular.ttf", "PatrickHand-Regular.ttf", "IBMPlexMono-Regular.ttf", "LICENSE-Apache-PermanentMarker.txt", "OFL-PatrickHand.txt", "OFL-IBMPlexMono.txt"])
   cpSync(`vendor/sketch/fonts/${f}`, `${OUT}/assets/fonts/${f}`);
 if (only === "cli") process.exit(0);
 

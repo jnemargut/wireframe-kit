@@ -1,4 +1,5 @@
 import { formatIssues, suggest, type Issue, type Result } from "../vendor/sketch/suggest";
+import { findUndrawable, undrawableHint } from "../vendor/sketch/glyphs";
 import { isCrop } from "../vendor/sketch/crop";
 import { layoutScreen, linksOf, typeOf, type Layout } from "./layout";
 import { textWidth } from "./text";
@@ -188,6 +189,7 @@ export function validate(input: unknown): Result {
       for (const nid of Object.keys(file.layout?.[id] ?? {})) if (!l.boxes.some((b) => b.id === nid)) warn(`$.layout.${id}.${nid}`, `Nudge for "${nid}", but nothing on the screen has that id.`);
     }
   }
+  for (const u of findUndrawable(f)) { const h = undrawableHint(u.chars); warn(u.path, h.message, h.hint); }
   return { ok: errors.length === 0, errors, warnings };
 }
 
