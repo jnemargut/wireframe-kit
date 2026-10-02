@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { PDFDocument } from "pdf-lib";
-import { bakeImage } from "../vendor/sketch/bake";
+import { bakeImage, croppedImage, isCrop } from "../vendor/sketch/bake";
 import { drawingFonts, fontFaceCss } from "../vendor/sketch/fonts";
 import { initRenderer, renderPNG } from "../vendor/sketch/resvg";
 import { layoutScreen } from "./layout";
@@ -23,13 +23,17 @@ const MIME: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpe
 export function assetResolver(file: string) {
   const base = dirname(resolve(file));
   const memo = new Map<string, string | undefined>();
-  return (p: string, raw?: boolean) => {
-    const k = `${p}:${!!raw}`;
+  return (p: string, raw?: boolean, crop?: number[]) => {
+    const c = isCrop(crop) ? crop : undefined;
+    const k = `${p}:${!!raw}:${c?.join(",") ?? ""}`;
     if (memo.has(k)) return memo.get(k);
     const abs = resolve(base, p);
     let uri: string | undefined;
     if (existsSync(abs)) {
-      try { uri = raw ? `data:${MIME[extname(abs).toLowerCase()] ?? "image/png"};base64,${readFileSync(abs).toString("base64")}` : `data:image/png;base64,${bakeImage(abs, cacheDirFor(file), 1, "grey").toString("base64")}`; }
+      try {
+        if (raw) { const pic = croppedImage(abs, cacheDirFor(file), c); uri = `data:${pic.mime};base64,${pic.buf.toString("base64")}`; }
+        else uri = `data:image/png;base64,${bakeImage(abs, cacheDirFor(file), 1, "grey", c).toString("base64")}`;
+      }
       catch { uri = undefined; }
     }
     memo.set(k, uri);
@@ -73,6 +77,13 @@ export async function toPDF(doc: WireframeFile, file: string): Promise<Uint8Arra
     await add(renderPNG(screenSVG(doc, id, { asset: assetResolver(file) }), { scale: 2, fonts: drawingFonts() }), l.w, l.h);
   }
   return pdf.save();
+}
+
+/** Cut a region (in screen px) out of a rendered PNG. Done by placing the picture, so no filter runs off the edge. */
+export function cropPNG(png: Buffer, x: number, y: number, w: number, h: number, scale: number): Buffer {
+  const W = png.readUInt32BE(16), H = png.readUInt32BE(20);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(w * scale)}" height="${Math.round(h * scale)}"><rect width="100%" height="100%" fill="#fbfaf7"/><image href="data:image/png;base64,${png.toString("base64")}" x="${-x * scale}" y="${-y * scale}" width="${W}" height="${H}"/></svg>`;
+  return renderPNG(svg);
 }
 
 export function ensureDir(p: string) { mkdirSync(p, { recursive: true }); return p; }

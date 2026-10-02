@@ -13,7 +13,7 @@ interface Hot extends Rect { key: string; goes: string }
 type MarkTool = "pen" | "eraser" | null;
 
 /** Click through the flow like the real thing. Links glow orange (what a person does); a sharpie for crits; Esc leaves. */
-export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFile; start: string; onExit: (last: string) => void; asset: (src: string, raw?: boolean) => string | undefined; onMarkup: (screen: string, strokes: MarkupStroke[]) => void }) {
+export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFile; start: string; onExit: (last: string) => void; asset: (src: string, raw?: boolean, crop?: number[]) => string | undefined; onMarkup: (screen: string, strokes: MarkupStroke[]) => void }) {
   const [stack, setStack] = useState<string[]>([start]);
   const [hover, setHover] = useState<string | null>(null);
   const [tap, setTap] = useState<{ x: number; y: number; n: number } | null>(null);

@@ -437,6 +437,7 @@ An image placeholder (a crossed box). Give `src` to use a real picture; it's ske
   - `aspect`: Shape when there's no height: "16:9", "1:1", "4:3".
   - `src`: Optional image file path, sketchified.
   - `sketch`: false shows the picture as it is, instead of sketchified in grays.
+  - `crop`: Show only part of the picture: [left, top, right, bottom] as fractions (the editor's Crop button writes it).
   - `round`: Round corners a lot (or a circle when square).
 
 ```json
@@ -654,7 +655,7 @@ A dashed, labeled box for anything the catalog doesn't have. Say what it is.
 
 ## Icons
 
-`menu`, `back`, `close`, `search`, `plus`, `minus`, `check`, `chevron-right`, `chevron-down`, `chevron-left`, `heart`, `star`, `cart`, `bag`, `user`, `users`, `home`, `bell`, `settings`, `share`, `more`, `map-pin`, `clock`, `calendar`, `camera`, `image`, `mail`, `phone`, `chat`, `filter`, `edit`, `trash`, `lock`, `info`, `alert`, `play`, `list`, `grid`, `download`, `upload`, `coffee`, `card`, `gift`, `bookmark`, `send`, `mic`, `refresh`, `logout`, `help`, `doc`, `folder`, `link`, `eye`, `sun`, `moon`
+`menu`, `back`, `close`, `search`, `plus`, `minus`, `check`, `chevron-right`, `chevron-down`, `chevron-left`, `heart`, `star`, `cart`, `bag`, `user`, `users`, `home`, `bell`, `settings`, `share`, `more`, `map-pin`, `clock`, `calendar`, `camera`, `image`, `mail`, `phone`, `chat`, `filter`, `edit`, `trash`, `lock`, `info`, `alert`, `play`, `list`, `grid`, `download`, `upload`, `coffee`, `card`, `gift`, `bookmark`, `send`, `mic`, `refresh`, `logout`, `help`, `doc`, `folder`, `link`, `eye`, `sun`, `moon`, `arrow-up`, `arrow-down`, `arrow-left`, `arrow-right`, `chevron-up`, `external`, `expand`, `collapse`, `undo`, `redo`, `sort`, `drag`, `sidebar`, `zoom-in`, `zoom-out`, `copy`, `save`, `print`, `attach`, `pin`, `flag`, `tag`, `archive`, `inbox`, `reply`, `scan`, `qr`, `barcode`, `scissors`, `crop`, `layers`, `sliders`, `pause`, `stop`, `skip-next`, `skip-back`, `volume`, `mute`, `music`, `headphones`, `video`, `tv`, `monitor`, `laptop`, `smartphone`, `watch`, `keyboard`, `wifi`, `bluetooth`, `battery`, `signal`, `map`, `navigation`, `compass`, `globe`, `car`, `bus`, `bike`, `walk`, `plane`, `train`, `truck`, `store`, `building`, `briefcase`, `school`, `wallet`, `dollar`, `receipt`, `percent`, `ticket`, `thumbs-up`, `thumbs-down`, `chart`, `pie-chart`, `trending`, `database`, `code`, `terminal`, `cloud`, `heart-pulse`, `pill`, `medical`, `utensils`, `cake`, `paw`, `dumbbell`, `leaf`, `bolt`, `drop`, `umbrella`, `thermometer`, `fire`, `user-plus`, `user-check`, `id-card`, `smile`, `frown`, `shield`, `key`, `unlock`, `eye-off`, `fingerprint`, `accessibility`, `timer`, `hourglass`, `alarm`, `history`, `sparkle`, `rocket`, `idea`, `target`, `puzzle`, `award`, `trophy`, `palette`, `brush`, `at-sign`, `hash`, `language`
 
 ## Devices
 

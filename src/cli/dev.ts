@@ -2,10 +2,10 @@ import { createServer } from "node:http";
 import { existsSync, mkdirSync, readFileSync, watch, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bakeImage } from "../../vendor/sketch/bake";
+import { bakeImage, croppedImage, isCrop, type Crop } from "../../vendor/sketch/bake";
 import { applyOps, formatJSON, type Op } from "../../vendor/sketch/json";
 import { eventHub, listenFree, openBrowser, readBody, safePathUnder, sendJSON, serveStatic, TYPES } from "../../vendor/sketch/server";
-import { cacheDirFor, flowPNG, flowSVGFile, screenPNG, stemOf, toPDF } from "../export";
+import { cacheDirFor, cropPNG, flowPNG, flowSVGFile, screenPNG, stemOf, toPDF } from "../export";
 import type { WireframeFile } from "../types";
 import { validate } from "../validate";
 
@@ -62,9 +62,11 @@ export async function dev(file: string, o: DevOptions) {
       if (url.pathname.startsWith("/baked/")) {
         const p = safePathUnder(base, url.pathname.slice("/baked/".length));
         if (!p || !existsSync(p)) { res.writeHead(404); return res.end(); }
-        if (url.searchParams.get("raw")) { res.writeHead(200, { "content-type": TYPES[extname(p).toLowerCase()] ?? "image/png", "cache-control": "no-cache" }); return res.end(readFileSync(p)); }
+        const crop = url.searchParams.get("crop")?.split(",").map(Number) as Crop | undefined;
+        const c = isCrop(crop) ? crop : undefined;
+        if (url.searchParams.get("raw")) { const pic = croppedImage(p, cacheDirFor(abs), c); res.writeHead(200, { "content-type": pic.mime, "cache-control": "no-cache" }); return res.end(pic.buf); }
         res.writeHead(200, { "content-type": "image/png", "cache-control": "no-cache" });
-        return res.end(bakeImage(p, cacheDirFor(abs), 1, "grey"));
+        return res.end(bakeImage(p, cacheDirFor(abs), 1, "grey", c));
       }
       if (url.pathname === "/api/upload" && req.method === "POST") {
         const raw = (url.searchParams.get("name") ?? "image.png").toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
@@ -80,8 +82,13 @@ export async function dev(file: string, o: DevOptions) {
         const d = read();
         const id = url.searchParams.get("id") ?? "";
         if (!d.screens[id]) { res.writeHead(404); return res.end(); }
+        const scale = Math.min(4, Math.max(1, Number(url.searchParams.get("scale") ?? 2)));
+        const full = screenPNG(d, abs, id, scale);
         res.writeHead(200, { "content-type": "image/png", "cache-control": "no-cache" });
-        return res.end(screenPNG(d, abs, id, Math.min(4, Math.max(1, Number(url.searchParams.get("scale") ?? 2)))));
+        // a part of the screen (one copied element): crop the whole screen's picture
+        const q = (k: string) => Number(url.searchParams.get(k));
+        if (url.searchParams.has("w") && [q("x"), q("y"), q("w"), q("h")].every(Number.isFinite)) return res.end(cropPNG(full, q("x"), q("y"), Math.max(1, q("w")), Math.max(1, q("h")), scale));
+        return res.end(full);
       }
       if (url.pathname === "/api/export") {
         const d = read();

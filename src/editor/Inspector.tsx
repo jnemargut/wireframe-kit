@@ -6,7 +6,8 @@ import { CATEGORIES, CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, type Pro
 import { MARKER } from "../../vendor/sketch/tokens";
 import { Icon } from "../render/icons";
 import { COLORS } from "../../vendor/sketch/tools";
-import { getAt, keyOf, pathOf, type Sel } from "./model";
+import { getAt, keyOf, pathOf, setProp, type Sel } from "./model";
+import { SHAPE_FILLS, SHAPE_WEIGHTS, TEXT_SIZES } from "../../vendor/sketch/shapes";
 
 export interface InspectorActions {
   edit: (next: WireframeFile, coalesce?: string) => void;
@@ -14,6 +15,10 @@ export interface InspectorActions {
   select: (s: Sel) => void;
   remove: () => void;
   move: (delta: number) => void;
+  /** Open the crop dialog for the image at this path. */
+  crop: (path: (string | number)[]) => void;
+  /** Change what's drawn on top: back, backward, forward, front. */
+  arrange: (to: "back" | "backward" | "forward" | "front") => void;
   duplicate: () => void;
   resetNudge: () => void;
   copyPointer: () => void;
@@ -118,6 +123,7 @@ function Field({ k, d, node, path, screens, a, focusText }: { k: string; d: Prop
     case "screen": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">no link</option>{screens.map((s) => <option key={s} value={s}>→ {s}</option>)}<option value="back">← back</option></select>; break;
     case "strings": input = <textarea rows={Math.max(2, Array.isArray(v) ? v.length : 1)} value={Array.isArray(v) ? v.join("\n") : v == null ? "" : String(v)} onChange={(e) => set(e.target.value.split("\n").filter((x, i, arr) => x || i < arr.length - 1))} placeholder="one per line" />; break;
     case "rows": input = <textarea rows={4} value={Array.isArray(v) ? (v as unknown[][]).map((r) => (Array.isArray(r) ? r.join(" | ") : String(r))).join("\n") : ""} onChange={(e) => set(e.target.value.split("\n").filter(Boolean).map((r) => r.split("|").map((c) => c.trim())))} placeholder="cell | cell | cell" />; break;
+    case "crop": if (!node.src) return null; input = <span className="crop-row"><button type="button" className="btn small" onClick={() => a.crop(path)}>{Array.isArray(v) ? "Change crop…" : "Crop…"}</button>{Array.isArray(v) ? <button type="button" className="btn small ghost" onClick={() => set(undefined)}>Uncrop</button> : null}</span>; break;
     case "items": input = <ItemsEditor type={String(node.type)} items={Array.isArray(v) ? (v as Item[]) : []} screens={screens} onChange={set} />; break;
     default: return null;
   }
@@ -245,6 +251,7 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
           {typeof raw.width === "number" ? <p className="hint">Width is {raw.width}px.</p> : null}
         </>
       )}
+      {Array.isArray(raw.at) ? <Layer a={a} /> : null}
       <div className="actions">
         <button className="btn" title="Move up (⌥↑)" onClick={() => a.move(-1)}>↑</button>
         <button className="btn" title="Move down (⌥↓)" onClick={() => a.move(1)}>↓</button>
@@ -255,6 +262,20 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
       </div>
       <p className="hint mono">{keyOf(path)}</p>
     </aside>
+  );
+}
+
+/** Layer order: what's drawn on top of what. */
+function Layer({ a }: { a: InspectorActions }) {
+  return (
+    <div className="field wide"><span>Layer</span>
+      <span className="seg full">
+        <button title="To back (⇧⌘[)" onClick={() => a.arrange("back")}>To back</button>
+        <button title="Backward (⌘[)" onClick={() => a.arrange("backward")}>Backward</button>
+        <button title="Forward (⌘])" onClick={() => a.arrange("forward")}>Forward</button>
+        <button title="To front (⇧⌘])" onClick={() => a.arrange("front")}>To front</button>
+      </span>
+    </div>
   );
 }
 
@@ -295,10 +316,24 @@ function ShapePanel({ doc, screen, index, a }: { doc: WireframeFile; screen: str
       {sh.type === "rect" || sh.type === "ellipse" || sh.type === "path" ? (
         <label className="field"><span>Fill</span>
           <select value={sh.fill ?? "none"} onChange={(e) => a.setProp(path, "fill", e.target.value === "none" ? undefined : e.target.value)}>
-            {["none", "light", "mid", "dark"].map((f) => <option key={f}>{f}</option>)}
+            {SHAPE_FILLS.map((f) => <option key={f} value={f}>{f === "white" ? "white (covers things up)" : f}</option>)}
           </select>
         </label>
       ) : null}
+      {sh.type !== "text" ? (
+        <label className="field"><span>Line</span>
+          <select value={sh.color === "none" ? "none" : sh.weight ?? "normal"} onChange={(e) => { const v = e.target.value; if (v === "none") a.setProp(path, "color", "none"); else { let d = setProp(doc, path, "weight", v === "normal" ? undefined : v); if (sh.color === "none") d = setProp(d, path, "color", undefined); a.edit(d); } }}>
+            {[...SHAPE_WEIGHTS, ...(sh.type === "line" || sh.type === "arrow" ? [] : ["none"])].map((w) => <option key={w} value={w}>{w === "none" ? "no line" : w}</option>)}
+          </select>
+        </label>
+      ) : (
+        <label className="field"><span>Size</span>
+          <select value={sh.size ?? "m"} onChange={(e) => a.setProp(path, "size", e.target.value === "m" ? undefined : e.target.value)}>
+            {TEXT_SIZES.map((z) => <option key={z} value={z}>{({ s: "small", m: "medium", l: "large", xl: "huge" } as Record<string, string>)[z]}</option>)}
+          </select>
+        </label>
+      )}
+      <Layer a={a} />
       {sh.type === "text" ? <label className="field"><span>Text</span><TextIn multiline value={sh.text ?? ""} onChange={(v) => a.setProp(path, "text", v, `${path.join(".")}.text`)} /></label> : null}
       <div className="actions">
         <button className="btn" onClick={a.duplicate}>Duplicate</button>

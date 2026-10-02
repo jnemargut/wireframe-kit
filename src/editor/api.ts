@@ -20,4 +20,4 @@ export const api = {
 };
 
 /** Image `src` paths, sketchified in grays by the dev server (or as they are, with raw). */
-export const bakedUrl = (bust: number) => (p: string, raw?: boolean) => `/baked/${p.replace(/^\.\//, "").split("/").map(encodeURIComponent).join("/")}?v=${bust}${raw ? "&raw=1" : ""}`;
+export const bakedUrl = (bust: number) => (p: string, raw?: boolean, crop?: number[]) => `/baked/${p.replace(/^\.\//, "").split("/").map(encodeURIComponent).join("/")}?v=${bust}${raw ? "&raw=1" : ""}${crop ? `&crop=${crop.join(",")}` : ""}`;

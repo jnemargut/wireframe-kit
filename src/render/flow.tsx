@@ -2,6 +2,7 @@
  * The flow canvas (decision 7): every screen in a device frame, side by side, with arrows for links and the
  * designer's notes as stickies. The editor draws this live; `wf export` renders the same thing to a file.
  */
+import { StickyPaper } from "../../vendor/sketch/sticky";
 import { plainText, richLines } from "../../vendor/sketch/rich";
 import { renderToStaticMarkup } from "react-dom/server";
 import { C } from "../../vendor/sketch/tokens";
@@ -140,7 +141,7 @@ export function Notes({ l, file, x, y, below = 0 }: { l: Layout; file: Wireframe
         const h = lines.length * 21 + 18;
         const top = sy;
         sy += h + 10;
-        return <g key={`s-${n.key}`}><rect x={x - bz.l} y={top} width={w} height={h} fill={C.caption} stroke={C.ink} strokeWidth={1.6} transform={`rotate(${n.n % 2 ? -0.6 : 0.5} ${x} ${top})`} /><text fontFamily="Patrick Hand" fontSize={16} fill={C.ink}>{richLines(src, lines, C.ink, 16).map((ln, i) => <tspan key={i} x={x - bz.l + 14} y={top + 24 + i * 21}>{ln}</tspan>)}</text></g>;
+        return <g key={`s-${n.key}`}><StickyPaper x={x - bz.l} y={top} w={w} h={h} fill={C.caption} tilt={n.n % 2 ? -0.6 : 0.5} /><text fontFamily="Patrick Hand" fontSize={16} fill={C.ink}>{richLines(src, lines, C.ink, 16).map((ln, i) => <tspan key={i} x={x - bz.l + 14} y={top + 24 + i * 21}>{ln}</tspan>)}</text></g>;
       })}
     </g>
   );

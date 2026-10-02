@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CropDialog } from "../../vendor/sketch/crop-dialog";
 import type { Result } from "../../vendor/sketch/suggest";
 import { arrows as arrowsOf, bounds, laneSpace, layoutAll, positions } from "../render/flow";
 import { startScreen, type Item, type WireframeFile, type WNode } from "../types";
@@ -16,6 +17,7 @@ import { Palette } from "./Palette";
 import { Play } from "./Play";
 
 const CLIP = "wireframe-kit/node";
+const SHAPE_CLIP = "wireframe-kit/shape";
 
 export function App() {
   const [doc, setDoc] = useState<WireframeFile | null>(null);
@@ -36,6 +38,7 @@ export function App() {
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("ink");
   const [editing, setEditing] = useState<InlineEdit | null>(null);
+  const [cropping, setCropping] = useState<(string | number)[] | null>(null);
   const undo = useRef<WireframeFile[]>([]);
   const redo = useRef<WireframeFile[]>([]);
   const lastCo = useRef<string | undefined>(undefined);
@@ -139,6 +142,23 @@ export function App() {
       edit(M.remove(doc, sel.screen, M.pathOf(sel.screen, sel.key)));
       const parts = sel.key.split("/");
       setSel({ screen: sel.screen, key: parts.length > 2 ? parts.slice(0, -2).join("/") : "" });
+    },
+    crop: (path) => setCropping(path),
+    arrange: (to) => {
+      if (!doc || !sel?.key || sel.key.includes("#")) return;
+      // drawings: their order in the screen's shapes; elements: their order among their siblings
+      const isShape = sel.key.startsWith("shape:");
+      const listPath = isShape ? ["screens", sel.screen, "shapes"] : M.parentOf(M.pathOf(sel.screen, sel.key))?.list;
+      const index = isShape ? Number(sel.key.slice(6)) : M.parentOf(M.pathOf(sel.screen, sel.key))?.index;
+      const list = listPath ? (M.getAt(doc, listPath) as unknown[] | undefined) : undefined;
+      if (!list || index === undefined) return;
+      const target = to === "front" ? list.length - 1 : to === "back" ? 0 : to === "forward" ? Math.min(list.length - 1, index + 1) : Math.max(0, index - 1);
+      if (target === index) return;
+      const next = [...list];
+      const [it] = next.splice(index, 1);
+      next.splice(target, 0, it);
+      edit(M.setAt(doc, listPath!, next));
+      setSel({ screen: sel.screen, key: isShape ? `shape:${target}` : M.keyOf([...listPath!, target]) });
     },
     move: (delta) => {
       if (!doc || !sel?.key || sel.key.includes("#") || sel.key.startsWith("shape:")) return;
@@ -392,6 +412,40 @@ export function App() {
 
   const onInsert = (node: Record<string, unknown>) => insertNode(M.clone(node));
 
+  /** Put a copied element or drawing back: drawings onto the screen you're on, elements where they'd go. */
+  const pasteOwn = (o: Record<string, unknown>) => {
+    if (!doc) return;
+    if (o?.[SHAPE_CLIP]) {
+      const screen = focusedScreen();
+      const shapes = [...(doc.screens[screen]?.shapes ?? []), o[SHAPE_CLIP] as SketchShape];
+      edit(M.setAt(doc, ["screens", screen, "shapes"], shapes));
+      setSel({ screen, key: `shape:${shapes.length - 1}` });
+      return;
+    }
+    const n = o?.[CLIP] ?? (o?.type || o?.use ? o : undefined);
+    if (n) insertNode(n);
+  };
+  /**
+   * Copy twice over: a picture of it (for Slack, docs, Figma) and the thing itself (for any wireframe), the same way
+   * Storyboard Kit copies panels. Browsers that can't hold both get the picture, and this tab remembers the rest.
+   */
+  const lastCopy = useRef<{ clip: Record<string, unknown>; size?: number } | null>(null);
+  const copyEverywhere = async (clip: Record<string, unknown>, screen: string, r: Rect | undefined, cut: boolean) => {
+    const json = JSON.stringify(clip, null, 2);
+    lastCopy.current = { clip };
+    try {
+      if (!r) throw new Error("no picture");
+      const pad = 6;
+      const png = fetch(`/api/screen.png?id=${encodeURIComponent(screen)}&scale=2&x=${Math.round(r.x - pad)}&y=${Math.round(r.y - pad)}&w=${Math.round(r.w + pad * 2)}&h=${Math.round(r.h + pad * 2)}`).then((x) => x.blob()).then((b) => { if (lastCopy.current) lastCopy.current.size = b.size; return b; });
+      const custom = (ClipboardItem as unknown as { supports?: (t: string) => boolean }).supports?.("web application/x-wireframe-node");
+      await navigator.clipboard.write([new ClipboardItem(custom ? { "image/png": png, "web application/x-wireframe-node": new Blob([json], { type: "application/x-wireframe-node" }) } : { "image/png": png })]);
+      flash(cut ? "Cut. It's on the clipboard as a picture (for Slack, docs…) and as itself (for any wireframe)." : "Copied as a picture (paste into Slack, a doc…) and as itself (paste into any wireframe).");
+    } catch {
+      await navigator.clipboard.writeText(json).catch(() => undefined);
+      flash(cut ? "Cut. Paste it into any screen, or Cmd+Z to undo." : "Copied. Paste into any wireframe, or to your agent as JSON.");
+    }
+  };
+
   /** An image from the clipboard or the upload button: into the selected image, else onto the screen you're on. */
   const addImage = (f: File) => {
     if (!doc) return;
@@ -401,10 +455,17 @@ export function App() {
     onDropFile(screen, Math.round(l.w / 2), Math.round(l.h / 3), f);
   };
   useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
-      if (play || (e.target as HTMLElement).closest("input,textarea,select,[contenteditable]")) return;
+    const onPaste = async (e: ClipboardEvent) => {
+      if (play || (e.target instanceof Element && e.target.closest("input,textarea,select,[contenteditable]"))) return;
       const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith("image/"));
-      if (f) { e.preventDefault(); addImage(f); }
+      if (!f) return;
+      e.preventDefault();
+      // something copied here comes back as itself, not as a picture of itself
+      if (lastCopy.current && lastCopy.current.size === f.size) { pasteOwn(lastCopy.current.clip); return; }
+      try {
+        for (const item of await navigator.clipboard.read()) if (item.types.includes("web application/x-wireframe-node")) { pasteOwn(JSON.parse(await (await item.getType("web application/x-wireframe-node")).text())); return; }
+      } catch { /* no permission, or not ours */ }
+      addImage(f);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
@@ -415,7 +476,7 @@ export function App() {
   // keyboard
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
-      if (play) return;
+      if (play || cropping) return;
       const typing = (e.target as HTMLElement).closest("input,textarea,select,[contenteditable]");
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) step(redo, undo); else step(undo, redo); return; }
@@ -437,20 +498,30 @@ export function App() {
       }
       if ((e.key === "Delete" || e.key === "Backspace") && sel) { e.preventDefault(); a.remove(); return; }
       if (mod && e.key.toLowerCase() === "d" && sel) { e.preventDefault(); a.duplicate(); return; }
-      if (mod && e.key.toLowerCase() === "c" && sel?.key && !sel.key.startsWith("shape:") && doc) {
-        const n = M.getAt(doc, M.pathOf(sel.screen, sel.key.split("#")[0]));
+      if (mod && (e.key.toLowerCase() === "c" || e.key.toLowerCase() === "x") && sel && !sel.key.includes("#") && doc) {
         e.preventDefault();
-        await navigator.clipboard.writeText(JSON.stringify({ [CLIP]: n }, null, 2)).catch(() => undefined);
-        flash("Copied. Paste into any wireframe, or to your agent as JSON.");
+        const cut = e.key.toLowerCase() === "x";
+        if (!sel.key) { if (!cut) a.copyScreenImage(); return; }
+        const isShape = sel.key.startsWith("shape:");
+        const clip = isShape ? { [SHAPE_CLIP]: doc.screens[sel.screen]?.shapes?.[Number(sel.key.slice(6))] } : { [CLIP]: M.getAt(doc, M.pathOf(sel.screen, sel.key)) };
+        const done = copyEverywhere(clip, sel.screen, layouts[sel.screen] ? selRectOf(doc, layouts[sel.screen], sel.key) : undefined, cut);
+        // a cut feels instant: it's gone now, and the clipboard catches up in a moment
+        if (cut) a.remove();
+        await done;
+        return;
+      }
+      if (mod && (e.code === "BracketRight" || e.code === "BracketLeft") && sel?.key && !sel.key.includes("#")) {
+        e.preventDefault();
+        const up = e.code === "BracketRight";
+        a.arrange(e.shiftKey ? (up ? "front" : "back") : up ? "forward" : "backward");
         return;
       }
       if (mod && e.key.toLowerCase() === "v" && doc) {
         const text = await navigator.clipboard.readText().catch(() => "");
         try {
           const o = JSON.parse(text);
-          const n = o?.[CLIP] ?? (o?.type || o?.use ? o : undefined);
-          if (n) { e.preventDefault(); insertNode(n); }
-        } catch { /* not ours */ }
+          if (o?.[SHAPE_CLIP] || o?.[CLIP] || o?.type || o?.use) { e.preventDefault(); pasteOwn(o); }
+        } catch { /* not ours: the paste event handles pictures */ }
         return;
       }
       if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); a.move(e.key === "ArrowUp" ? -1 : 1); return; }
@@ -521,6 +592,11 @@ export function App() {
         <Inspector doc={doc} layouts={layouts} sel={sel} result={result} a={a} focusText={focusText} />
       </div>
       {toast ? <div className="toast">{toast}</div> : null}
+      {cropping && doc ? (() => {
+        const n = M.getAt(doc, cropping) as WNode | undefined;
+        if (!n?.src) return null;
+        return <CropDialog src={asset(String(n.src), true) ?? ""} crop={Array.isArray(n.crop) ? (n.crop as [number, number, number, number]) : undefined} onCancel={() => setCropping(null)} onDone={(c) => { edit(M.setProp(doc, cropping, "crop", c)); setCropping(null); }} />;
+      })() : null}
       {play ? <Play doc={doc} start={play} asset={asset} onMarkup={onMarkup} onExit={(last) => { setPlay(null); setSel({ screen: last, key: "" }); }} /> : null}
     </div>
   );

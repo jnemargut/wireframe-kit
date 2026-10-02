@@ -79,8 +79,9 @@ path. **Below, \`${CLI}\` is short for that whole command.**
 - **Stay low-fi.** Grays only; there are no color or font options on purpose. Images are crossed boxes with a
   label unless the designer gives you a picture (\`"src"\`), which gets sketchified to match
   (\`"sketch": false\` shows it as it is). Designers can drop, paste or upload pictures in the editor too.
-- **Emphasis in words.** Any text can use \`**bold**\`, \`*italic*\` and \`~~struck out~~\` (a sale price, the
-  word that matters). Designers get Cmd+B and Cmd+I in the editor.
+- **Emphasis in words.** Any text can use \`**bold**\`, \`*italic*\`, \`__underline__\` and \`~~struck out~~\`
+  (a sale price, the word that matters). Designers get Cmd+B, Cmd+I and Cmd+U in the editor. An image with a
+  \`src\` can be cropped: \`"crop": [left, top, right, bottom]\` as fractions of the picture.
 - 3 to 10 screens per file. One file per flow.
 `;
 

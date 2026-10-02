@@ -188,6 +188,9 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .tap { animation: tap 420ms var(--ease) forwards; }
 @keyframes tap { from { r: 6px; opacity: 1; } to { r: 34px; opacity: 0; } }
 
+.seg.full { display: flex; width: 100%; }
+.seg.full button { flex: 1; padding: 3px 4px; min-width: 0; white-space: nowrap; }
+.field.wide { grid-template-columns: 1fr; }
 .quick { display: flex; flex-wrap: wrap; gap: 3px; }
 .quick button { border: 1.5px solid var(--color-400); background: #fff; padding: 2px 7px; cursor: pointer; font-size: 12px; }
 .quick button:hover { border-color: var(--color-ink); }

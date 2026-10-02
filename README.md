@@ -85,7 +85,8 @@ Or just click around yourself. Your edits and the agent's edits land in the same
 
 - **About 50 components.** Navbars, tab bars, sidebars and site headers. Buttons, inputs, selects, checkboxes,
   toggles, sliders, steppers and chips. Lists, tables, cards, images, avatars, charts, maps and video. Alerts,
-  toasts, progress, steps, bottom sheets and dialogs. Plus 55 little icons.
+  toasts, progress, steps, bottom sheets and dialogs. Plus 175 little icons, from arrows and carts to
+  trains, pills, wallets and fingerprints.
 - **A sketch box for everything else.** A dashed box with a label for the bits that are yours alone. The checker
   nudges your agent if a screen is mostly sketch boxes.
 - **Real flows.** Buttons, list rows, tabs and menu items link to other screens. Shared pieces like the tab bar
@@ -94,9 +95,9 @@ Or just click around yourself. Your edits and the agent's edits land in the same
   floats them in a corner. It never writes coordinates, so nothing ends up 3 pixels off.
 - **Notes.** Little numbered stickies beside a screen for the "why", so the screen itself stays clean.
 - **Any picture at all.** Drop, paste or upload a photo and it gets sketchified in grays to match (or shows as it
-  is, your call).
-- **Bold, italic and strikethrough** in any text: `**bold**`, `*italic*`, `~~$6.50~~`, or Cmd+B and Cmd+I in
-  the editor.
+  is, your call). Hit **Crop…** to show just the part you want.
+- **Bold, italic, underline and strikethrough** in any text: `**bold**`, `*italic*`, `__underline__`, `~~$6.50~~`,
+  or Cmd+B, Cmd+I and Cmd+U in the editor.
 
 ### Any size, side by side
 
@@ -133,7 +134,11 @@ builds stays in tidy stacks, and anything you drag in lands exactly where you dr
 
 - Every screen side by side, with arrows for every link. Drag a screen's title to move it, or its corner to
   resize it. Scroll to pan, pinch (or Cmd+scroll) to zoom, Cmd+0 to fit everything.
-- Cmd+C / Cmd+V / Cmd+D copy, paste and duplicate. Alt+↑ / Alt+↓ move things up and down. Delete deletes, Cmd+Z undoes.
+- Cmd+C / Cmd+X / Cmd+V / Cmd+D copy, cut, paste and duplicate. Copying puts a picture on the clipboard too, so it
+  pastes straight into Slack or a doc, and pastes back into a wireframe as the real thing.
+- Alt+↑ / Alt+↓ move things up and down the stack. Cmd+] / Cmd+[ (add Shift for all the way) change what's in front.
+  Delete deletes, Cmd+Z undoes.
+- Drawings come in thin, normal or thick lines, with a solid white fill (no outline) for covering something up.
 - Rename a screen and every link to it follows along.
 - **Copy for agent** copies a pointer to whatever you clicked, so you can tell your agent "make this a toggle instead."
 

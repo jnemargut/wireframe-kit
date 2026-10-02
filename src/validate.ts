@@ -1,8 +1,9 @@
 import { formatIssues, suggest, type Issue, type Result } from "../vendor/sketch/suggest";
+import { isCrop } from "../vendor/sketch/crop";
 import { layoutScreen, linksOf, typeOf, type Layout } from "./layout";
 import { textWidth } from "./text";
 import { CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, propsOf, TYPES, type PropDef } from "./vocab";
-import { MARKER_COLORS, SHAPE_TYPES } from "../vendor/sketch/shapes";
+import { MARKER_COLORS, SHAPE_COLORS, SHAPE_FILLS, SHAPE_TYPES, SHAPE_WEIGHTS, TEXT_SIZES } from "../vendor/sketch/shapes";
 import { resolveNode, type WireframeFile, type WNode } from "./types";
 
 export type { Issue, Result };
@@ -11,7 +12,7 @@ type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const TOP = ["$schema", "title", "device", "start", "shared", "screens", "layout", "canvas"];
 const SCREEN = ["title", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "chrome", "versionOf", "note", "children", "shapes", "markup"];
-const SHAPE_KEYS = ["id", "type", "points", "fill", "text", "color"];
+const SHAPE_KEYS = ["id", "type", "points", "fill", "text", "color", "weight", "size"];
 const ITEM = ["text", "title", "subtitle", "meta", "icon", "image", "goes"];
 
 export function validate(input: unknown): Result {
@@ -81,6 +82,7 @@ export function validate(input: unknown): Result {
         });
         if (type === "navbar") v.forEach((it, i) => { const name = typeof it === "string" ? it : isObj(it) ? it.icon : undefined; if (name !== undefined && !(ICONS as readonly string[]).includes(String(name))) { const s = suggest(String(name), ICONS); err(`${path}[${i}]`, `"${String(name)}" isn't an icon.`, s ? `Did you mean "${s}"?` : "Navbar actions are icon names."); } });
         break;
+      case "crop": if (!isCrop(v)) err(path, "must be [left, top, right, bottom], fractions from 0 to 1.", "e.g. [0, 0.1, 1, 0.6]"); break;
       case "point": if (!Array.isArray(v) || v.length !== 2 || v.some((x) => typeof x !== "number")) err(path, "must be [x, y] in screen px, e.g. [24, 300]."); break;
       case "children": break;
     }
@@ -146,7 +148,11 @@ export function validate(input: unknown): Result {
           for (const k of Object.keys(sh)) if (!SHAPE_KEYS.includes(k)) unknownKey(q, k, SHAPE_KEYS, "a shape");
           if (!(SHAPE_TYPES as readonly string[]).includes(String(sh.type))) { const sg = suggest(String(sh.type), SHAPE_TYPES); err(`${q}.type`, `"${String(sh.type)}" isn't a shape.`, sg ? `Did you mean "${sg}"?` : `Use one of: ${SHAPE_TYPES.join(", ")}`); }
         }
-        if (sh.color !== undefined && !(MARKER_COLORS as readonly string[]).includes(String(sh.color))) err(`${q}.color`, `"${String(sh.color)}" isn't a marker color.`, `Use one of: ${MARKER_COLORS.join(", ")}`);
+        const colors: readonly string[] = key === "shapes" ? SHAPE_COLORS : MARKER_COLORS;
+        if (sh.color !== undefined && !colors.includes(String(sh.color))) err(`${q}.color`, `"${String(sh.color)}" isn't a marker color.`, `Use one of: ${colors.join(", ")}`);
+        if (sh.fill !== undefined && !(SHAPE_FILLS as readonly string[]).includes(String(sh.fill))) err(`${q}.fill`, `"${String(sh.fill)}" isn't a fill.`, `Use one of: ${SHAPE_FILLS.join(", ")}`);
+        if (sh.weight !== undefined && !(SHAPE_WEIGHTS as readonly string[]).includes(String(sh.weight))) err(`${q}.weight`, `"${String(sh.weight)}" isn't a line weight.`, `Use one of: ${SHAPE_WEIGHTS.join(", ")}`);
+        if (sh.size !== undefined && !(TEXT_SIZES as readonly string[]).includes(String(sh.size))) err(`${q}.size`, `"${String(sh.size)}" isn't a text size.`, `Use one of: ${TEXT_SIZES.join(", ")}`);
       });
     }
   }

@@ -14,7 +14,7 @@ import { hasIcon, Icon } from "./icons";
 export interface Drawn { shape?: ReactNode; words?: ReactNode }
 export interface DrawCtx {
   /** Resolve an image `src` to an href (already sketchified). */
-  asset?: (src: string, raw?: boolean) => string | undefined;
+  asset?: (src: string, raw?: boolean, crop?: number[]) => string | undefined;
   /** Unique prefix for clip-path ids. */
   uid: string;
 }
@@ -280,7 +280,7 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     // ---------- content ----------
     case "image": {
       const rx = n.round ? (Math.abs(w - h) < 2 ? w / 2 : 18) : 8;
-      const href = n.src && ctx.asset ? ctx.asset(s(n.src), n.sketch === false) : undefined;
+      const href = n.src && ctx.asset ? ctx.asset(s(n.src), n.sketch === false, Array.isArray(n.crop) ? (n.crop as number[]) : undefined) : undefined;
       if (href) {
         const id = `${uid}-img`;
         return { shape: <g><clipPath id={id}><rect x={x} y={y} width={w} height={h} rx={rx} /></clipPath><image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id})`} />{R(x, y, w, h, { rx })}</g> };

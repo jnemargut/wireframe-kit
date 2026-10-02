@@ -12,6 +12,7 @@ const file = join(dir, "order-ahead.wireframe.json");
 cpSync("examples/order-ahead.wireframe.json", file);
 const read = () => JSON.parse(readFileSync(file, "utf8"));
 let failures = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ok = (name, cond, extra = "") => { console.log(`${cond ? "✓" : "✗"} ${name}${cond ? "" : ` ${extra}`}`); if (!cond) failures++; };
 const until = async (fn, ms = 4000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await fn()) return true; await new Promise((r) => setTimeout(r, 80)); } return false; };
 
@@ -34,7 +35,8 @@ const server = spawn(process.execPath, [WF, "dev", file, "--no-open", "--port", 
 await new Promise((r) => server.stdout.on("data", (d) => String(d).includes("localhost") && r()));
 const url = `http://localhost:${port}/`;
 const browser = await chromium.launch({ channel: "chrome" });
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, permissions: ["clipboard-read", "clipboard-write"] });
+const page = await ctx.newPage();
 page.setDefaultTimeout(8000);
 const errors = [];
 process.on("uncaughtException", (e) => { console.error(e); server.kill(); process.exit(1); });
@@ -161,6 +163,31 @@ ok("play goes back", await until(async () => (await page.locator(".play-title").
 await page.keyboard.press("Escape");
 ok("Esc leaves play", await until(async () => (await page.locator(".play").count()) === 0));
 
+// cut an element, paste it back; what's copied is a picture too (for Slack)
+await sleep(600);
+await page.keyboard.press("Escape"); await page.keyboard.press("Escape"); await page.keyboard.press("Escape");
+await page.locator(".screen-list button").first().click();
+await sleep(500);
+const lp = await page.evaluate(() => {
+  const { layouts, pos, view } = window.__wf;
+  const b = layouts.menu.boxes.filter((x) => x.key.split("/").length === 2 && !x.hidden && x.type === "list")[0] ?? layouts.menu.boxes.find((x) => x.key === "children/1");
+  const c = document.querySelector(".canvas").getBoundingClientRect();
+  return { x: c.left + view.x + (pos.menu[0] + b.x + 12) * view.k, y: c.top + view.y + (pos.menu[1] + b.y + 6) * view.k, key: b.key };
+});
+await page.mouse.click(lp.x, lp.y);
+const picked = await page.evaluate(() => window.__wf.sel);
+const kids = () => read().screens[picked.screen].children.length;
+const n0 = kids();
+await page.keyboard.press("Meta+x");
+ok("Cmd+X cuts an element", await until(() => kids() === n0 - 1), JSON.stringify(picked));
+const clipTypes = async () => page.evaluate(async () => (await navigator.clipboard.read()).flatMap((i) => i.types)).catch(() => []);
+await until(async () => (await clipTypes()).includes("image/png"), 8000);
+const types = await clipTypes();
+ok("the clipboard holds a picture of it", types.includes("image/png"), types.join(", "));
+await page.keyboard.press("Meta+v");
+ok("pasting puts the element back, not a picture", await until(() => kids() === n0));
+ok("the icon set is big", (await (await page.request.get(`${url}api/file`)).ok()) && cli("vocab", "icons").split(/\s+/).length > 150);
+
 // export from the editor
 const res = await page.request.get(`${url}api/export?format=png`);
 ok("editor export returns a PNG", res.ok() && (await res.body()).readUInt32BE(0) === 0x89504e47);
@@ -168,6 +195,7 @@ const shot = await page.request.get(`${url}api/screen.png?id=menu`);
 ok("copy-as-image endpoint returns a PNG", shot.ok());
 
 ok("no console errors", errors.length === 0, errors.join("\n"));
+await ctx.close();
 await browser.close();
 server.kill();
 console.log(failures ? `\n${failures} failed` : "\nall passed");

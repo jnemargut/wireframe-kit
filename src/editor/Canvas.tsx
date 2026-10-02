@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as RPE } from "react";
 import { RichHTML } from "../../vendor/sketch/rich";
-import { shapeBox } from "../../vendor/sketch/shapes";
+import { shapeBox, shapeTextSize } from "../../vendor/sketch/shapes";
 import type { DrawTool } from "../../vendor/sketch/tools";
 import { useWheelView, type View } from "../../vendor/sketch/view";
 import type { Layout } from "../layout";
@@ -38,7 +38,7 @@ interface Props {
   onEditDone: (value: string | null) => void;
   onDropNode: (screen: string, x: number, y: number, payload: string) => void;
   onDropFile: (screen: string | null, x: number, y: number, file: File) => void;
-  asset: (src: string, raw?: boolean) => string | undefined;
+  asset: (src: string, raw?: boolean, crop?: number[]) => string | undefined;
   dragging: boolean;
   setDragging: (d: boolean) => void;
 }
@@ -50,7 +50,7 @@ export function hitTest(l: Layout, x: number, y: number, doc?: WireframeFile): s
   const shapes = doc?.screens[l.screen]?.shapes ?? [];
   for (let i = shapes.length - 1; i >= 0; i--) {
     const b = shapeBox(shapes[i]);
-    if (shapes[i].type === "text") { const w = Math.max(40, (shapes[i].text ?? "").length * 9 * shapeScale(l.w) / 1.4); if (inside({ x: b.x - w / 2, y: b.y - 16, w, h: 32 }, x, y)) return `shape:${i}`; }
+    if (shapes[i].type === "text") { const w = Math.max(40, (shapes[i].text ?? "").length * 9 * shapeScale(l.w) / 1.4 * shapeTextSize(shapes[i]) / 16); if (inside({ x: b.x - w / 2, y: b.y - 16, w, h: 32 }, x, y)) return `shape:${i}`; }
     else if (inside(b, x, y, 8)) return `shape:${i}`;
   }
   const boxes = l.boxes.filter((b) => !b.hidden && inside(b, x, y));
@@ -95,7 +95,7 @@ export function selRectOf(doc: WireframeFile, l: Layout | undefined, key: string
     const s = doc.screens[l.screen]?.shapes?.[Number(key.slice(6))];
     if (!s) return undefined;
     const b = shapeBox(s);
-    if (s.type === "text") { const w = Math.max(40, (s.text ?? "").split("\n").reduce((a, t) => Math.max(a, t.length), 0) * 9 * shapeScale(l.w) / 1.4); const h = (s.text ?? "").split("\n").length * 22 * shapeScale(l.w) / 1.4 + 8; return { x: b.x - w / 2, y: b.y - h / 2, w, h }; }
+    if (s.type === "text") { const tk = shapeTextSize(s) / 16; const w = Math.max(40, (s.text ?? "").split("\n").reduce((a, t) => Math.max(a, t.length), 0) * 9 * shapeScale(l.w) / 1.4 * tk); const h = (s.text ?? "").split("\n").length * 22 * shapeScale(l.w) / 1.4 * tk + 8; return { x: b.x - w / 2, y: b.y - h / 2, w, h }; }
     return b;
   }
   const r = key.includes("#") ? l.items.find((it) => it.key === key) : l.boxes.find((b) => b.key === key);
