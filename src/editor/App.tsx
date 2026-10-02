@@ -29,6 +29,9 @@ export function App() {
   const [view, setView] = useState<View>({ x: 40, y: 40, k: 0.5 });
   const [dragging, setDragging] = useState(false);
   const [play, setPlay] = useState<string | null>(null);
+  // the properties panel can be put away for more canvas; remembered per browser
+  const [props, setPropsRaw] = useState(() => { try { return localStorage.getItem("props-panel") !== "hidden"; } catch { return true; } });
+  const setProps = (on: boolean) => { setPropsRaw(on); try { localStorage.setItem("props-panel", on ? "shown" : "hidden"); } catch { /* private window: fine */ } };
   const [palette, setPalette] = useState(true);
   const [focusText, setFocusText] = useState(0);
   const [status, setStatus] = useState<"saved" | "saving" | "error">("saved");
@@ -516,6 +519,7 @@ export function App() {
         a.arrange(e.shiftKey ? (up ? "front" : "back") : up ? "forward" : "backward");
         return;
       }
+      if (mod && e.code === "Backslash") { e.preventDefault(); setProps(!props); return; }
       if (mod && e.key.toLowerCase() === "v" && doc) {
         const text = await navigator.clipboard.readText().catch(() => "");
         try {
@@ -555,6 +559,7 @@ export function App() {
         <span className="brand">Wireframe Kit</span>
         <span className="file" title={file}>{file}</span>
         <button className={`btn${palette ? " on" : ""}`} onClick={() => setPalette(!palette)}>Components</button>
+        <button className={`btn${props ? " on" : ""}`} onClick={() => setProps(!props)} title={"Show or hide the properties panel (⌘\\)"}>Properties</button>
         <button className="btn" onClick={a.addScreen}>+ Screen</button>
         <button className="btn" disabled={!undo.current.length} onClick={() => step(undo, redo)} title="Undo (⌘Z)">Undo</button>
         <button className="btn" disabled={!redo.current.length} onClick={() => step(redo, undo)} title="Redo (⇧⌘Z)">Redo</button>
@@ -578,7 +583,7 @@ export function App() {
         </div>
         <button className="btn dark" onClick={() => a.play(sel?.screen)} title="Click through the flow (P)">Play</button>
       </header>
-      <div className={`main${palette ? " with-palette" : ""}`}>
+      <div className={`main${palette ? " with-palette" : ""}${props ? "" : " no-props"}`}>
         {palette ? <Palette onInsert={onInsert} onClose={() => setPalette(false)} onUpload={addImage} /> : null}
         <div className="canvas-wrap" ref={canvasEl}>
           <Canvas doc={shown} layouts={layouts} pos={pos} arrows={arr} below={laneSpace(arr)} view={view} setView={setView}
@@ -589,7 +594,7 @@ export function App() {
           <Tools tool={tool} setTool={setTool} color={color} setColor={setColor} />
           {error ? <div className="banner">{error}</div> : null}
         </div>
-        <Inspector doc={doc} layouts={layouts} sel={sel} result={result} a={a} focusText={focusText} />
+        {props ? <Inspector doc={doc} layouts={layouts} sel={sel} result={result} a={a} focusText={focusText} /> : null}
       </div>
       {toast ? <div className="toast">{toast}</div> : null}
       {cropping && doc ? (() => {

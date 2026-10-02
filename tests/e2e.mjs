@@ -188,6 +188,13 @@ await page.keyboard.press("Meta+v");
 ok("pasting puts the element back, not a picture", await until(() => kids() === n0));
 ok("the icon set is big", (await (await page.request.get(`${url}api/file`)).ok()) && cli("vocab", "icons").split(/\s+/).length > 150);
 
+// the properties panel can be hidden (button or Cmd+\\) and comes back
+await page.keyboard.press("Escape");
+await page.getByRole("button", { name: "Properties" }).click();
+ok("Properties hides the panel", (await page.locator(".inspector").count()) === 0);
+await page.keyboard.press("Meta+Backslash");
+ok("Cmd+\\ brings it back", (await page.locator(".inspector").count()) === 1);
+
 // export from the editor
 const res = await page.request.get(`${url}api/export?format=png`);
 ok("editor export returns a PNG", res.ok() && (await res.body()).readUInt32BE(0) === 0x89504e47);
