@@ -1,0 +1,160 @@
+# Wireframe Kit
+
+**Low-fi wireframes and clickable flows, built by your coding agent.**
+
+You tell Claude Code (or Codex) the flow you have in mind. It sketches every screen, links them up, and opens
+a canvas where you see the whole thing at once. You poke at it, click through it like the real app, and hand
+it to your team before anyone starts arguing about pixels.
+
+![Wireframe Kit sizzle reel](docs/sizzle-a97aef3.gif)
+
+## Why though
+
+Early on, the question is "does this flow make sense?", not "is this the right shade of blue?" Wireframes that
+look finished get feedback about fonts. Wireframes that look like marker on paper get feedback about the idea.
+
+So everything here is drawn in greys with a wobbly marker line. No colours, no font pickers, no way to
+accidentally make it pretty. Your agent does the boring part (laying out forms, lists, tab bars, the empty
+state you forgot) and you spend your time on the part that matters: is this the right thing, in the right
+order, for the person using it?
+
+![The order-ahead flow on one sheet](docs/flow-1dbfdc1.png)
+
+Every screen sits on one canvas with arrows for where each button goes, so you see the shape of the flow at
+a glance: the dead ends, the screens nothing links to, the unhappy path you haven't drawn yet.
+
+## Plays nice with Storyboard Kit
+
+Wireframe Kit works great on its own. It also has a sibling: [Storyboard Kit](https://github.com/jnemargut/storyboard-kit),
+which draws comic strips of a customer's whole day. Point any phone in a storyboard at a wireframe screen
+(`"screen": "./order-ahead.wireframe.json#status"`) and it shows up on the device, in teal, because teal is
+how storyboards mark the product.
+
+![A storyboard using real wireframe screens](docs/in-a-storyboard-d5e4b1f.png)
+
+Change the wireframe and the storyboard catches up on its own. Now you can see the screen *and* the moment
+someone is staring at it, waiting for a latte that said 4 minutes 12 minutes ago.
+
+## Install (about 30 seconds)
+
+You need Node.js 18 or newer. That's it. No `npm install`, no build step, nothing native.
+
+```bash
+git clone https://github.com/jnemargut/wireframe-kit.git
+node wireframe-kit/skills/wireframe/scripts/wireframe.mjs install
+```
+
+That drops the skill into `~/.claude/skills/wireframe`. Restart Claude Code and `/wireframe` is ready to go.
+
+- **Codex?** Add `--codex` to the install command.
+- **Just one project?** Run `install --project` from inside that project.
+- **Old school?** Copy the `skills/wireframe` folder into your agent's skills folder yourself.
+
+## Use it
+
+In Claude Code, type `/wireframe` followed by the flow, in plain words:
+
+```
+/wireframe Corner Coffee's order-ahead flow: browse the menu, customize a latte, pay, then watch
+the order. Pastries sell out early.
+```
+
+The slash command is the surest way to kick it off. Asking for a wireframe without it usually works too,
+since the skill is there whenever you mention one. In Codex, just ask for a wireframe the same way.
+
+Your agent looks up the components it can use, writes `order-ahead.wireframe.json`, checks it (content running
+off the screen? two primary buttons fighting? a screen nothing links to?), looks at a render of its own work,
+and opens the editor in your browser. Then keep talking to it:
+
+- *"add the screen for when the order is running late"*
+- *"what does this look like on desktop?"*
+- *"the checkout feels long, trim it"*
+- *"render the status screen for my storyboard"*
+
+Or just click around yourself. Your edits and the agent's edits land in the same file, live.
+
+## What's in the box
+
+![About 50 components](docs/components-13541f1.png)
+
+- **About 50 components.** Navbars, tab bars, sidebars and site headers. Buttons, inputs, selects, checkboxes,
+  toggles, sliders, steppers and chips. Lists, tables, cards, images, avatars, charts, maps and video. Alerts,
+  toasts, progress, steps, bottom sheets and dialogs. Plus 55 little icons.
+- **A sketch box for everything else.** A dashed box with a label ("pastry carousel") for the bits that are
+  yours alone. The checker nudges your agent if a screen is mostly sketch boxes.
+- **Real flows.** Buttons, list rows, tabs and menu items link to other screens. Shared pieces like the tab bar
+  are defined once and reused everywhere.
+- **Layout that just works.** Things stack down the screen, sit side by side in rows, or float in a corner
+  (that floating cart button). Your agent never writes coordinates, so nothing ends up 3 pixels off.
+- **Any device.** Phone, tablet, a desktop app with a sidebar, or a long scrolling website.
+- **Notes.** Little numbered stickies beside a screen for the "why", so the screen itself stays clean.
+- **Any picture at all.** Drop in a photo and it gets sketchified in greys to match.
+
+![Desktop apps and websites too](docs/web-759f636.png)
+
+## The editor bits
+
+**The canvas**
+
+- Every screen in a device frame, side by side, with arrows for every link. Drag a screen's title to move it.
+- Scroll to pan, pinch (or Cmd+scroll) to zoom, Cmd+0 to fit everything.
+
+**Editing**
+
+- Click anything to select it and edit its words, links and settings on the right. Press Enter to jump to its text.
+- Drag to nudge things around. Arrow keys nudge too (Shift for bigger steps).
+- Grab more from the component palette on the left. It lands after whatever you've selected, or inside it if it's a card or a section.
+- Cmd+C / Cmd+V / Cmd+D copy, paste and duplicate. Alt+↑ / Alt+↓ move things up and down. Delete deletes, Cmd+Z undoes.
+- Rename a screen and every link to it follows along.
+- **Copy for agent** copies a pointer to whatever you clicked, so you can tell your agent "make this a toggle instead."
+
+**Play mode**
+
+Hit **Play** (or P) and click through the flow like the real app, with a big pointer the room can follow.
+Links glow orange when you hover, and Back, ← or the navbar arrow take you back.
+
+**Export**
+
+The whole flow as one PNG or SVG, a PDF with the flow plus a page per screen, or one PNG per screen. Each
+screen PNG carries its own source inside it, and **Copy as image** puts a screen on your clipboard for Slack,
+Miro or Figma.
+
+## Under the hood
+
+Everything runs through one bundled script. Agents use it, and so can you:
+
+```bash
+wf() { node ~/.claude/skills/wireframe/scripts/wireframe.mjs "$@"; }
+
+wf vocab                 # every component, by category
+wf vocab list            # one component: its props and an example
+wf validate my.wireframe.json
+wf dev my.wireframe.json
+wf export my.wireframe.json --png --pdf
+wf render my.wireframe.json          # screen PNGs for storyboards
+wf source my.status.png              # get the wireframe back out of a PNG
+```
+
+## Hacking on it
+
+```bash
+npm install
+npm run build     # rebuilds skills/wireframe/
+npm test          # unit tests: layout, every component, the checker, PNG round trips
+npm run e2e       # clicks around the real editor in Chrome
+```
+
+`src/vocab.ts` is the single source of truth for the component catalogue. The schema, the checker, the docs and
+the editor's palette all read from it. `skills/wireframe/` is generated from `src/`, and it's checked in so
+you can install straight from a clone.
+
+The marker drawing bits (tokens, fonts, the wobble, sketchify, PNG rendering) are shared with Storyboard Kit.
+They live in Storyboard Kit's `src/sketch/`, and `vendor/sketch/` here is an exact copy. Change them over
+there, then run `npm run sync-sketch`. The build refuses to run if the copy was edited by hand, so the two kits
+never quietly drift apart.
+
+## License
+
+MIT. Fonts are Permanent Marker (Apache 2.0) plus Patrick Hand, Work Sans and IBM Plex Mono (SIL OFL).
+
+Go sketch some flows.

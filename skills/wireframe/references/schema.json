@@ -1,0 +1,724 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wireframe Kit file",
+  "type": "object",
+  "required": [
+    "title",
+    "screens"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "device": {
+      "oneOf": [
+        {
+          "enum": [
+            "phone",
+            "tablet",
+            "desktop",
+            "watch"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "w",
+            "h"
+          ],
+          "properties": {
+            "w": {
+              "type": "number"
+            },
+            "h": {
+              "type": "number"
+            }
+          }
+        }
+      ]
+    },
+    "start": {
+      "type": "string"
+    },
+    "shared": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/node"
+      }
+    },
+    "screens": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/screen"
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "dx": {
+              "type": "number"
+            },
+            "dy": {
+              "type": "number"
+            },
+            "scale": {
+              "type": "number"
+            },
+            "hidden": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  },
+  "definitions": {
+    "screen": {
+      "type": "object",
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "dir": {
+          "enum": [
+            "down",
+            "right"
+          ]
+        },
+        "gap": {
+          "type": "number"
+        },
+        "pad": {
+          "type": "number"
+        },
+        "align": {
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "scroll": {
+          "type": "boolean"
+        },
+        "statusbar": {
+          "type": "boolean"
+        },
+        "device": {
+          "oneOf": [
+            {
+              "enum": [
+                "phone",
+                "tablet",
+                "desktop",
+                "watch"
+              ]
+            },
+            {
+              "type": "object",
+              "required": [
+                "w",
+                "h"
+              ],
+              "properties": {
+                "w": {
+                  "type": "number"
+                },
+                "h": {
+                  "type": "number"
+                }
+              }
+            }
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/node"
+          }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "anyOf": [
+        {
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "required": [
+            "use"
+          ]
+        }
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "description": "What's inside, in order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/node"
+          }
+        },
+        "gap": {
+          "description": "Space between children (px).",
+          "type": "number",
+          "minimum": 0
+        },
+        "pad": {
+          "description": "Space inside the edges (px).",
+          "type": "number",
+          "minimum": 0
+        },
+        "align": {
+          "description": "Cross-axis alignment of children that don't fill.",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "justify": {
+          "description": "Main-axis distribution of leftover space.",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "between"
+          ]
+        },
+        "dir": {
+          "description": "Stack direction.",
+          "enum": [
+            "down",
+            "right"
+          ]
+        },
+        "wrap": {
+          "description": "Wrap onto more lines when it runs out of room.",
+          "type": "boolean"
+        },
+        "flat": {
+          "description": "No border, just a soft fill.",
+          "type": "boolean"
+        },
+        "title": {
+          "description": "The section heading.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "action": {
+          "description": "Small link on the right, e.g. \"See all\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "columns": {
+          "description": "Number of columns (default 2).",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "text": {
+          "description": "The words.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "lines": {
+          "description": "Placeholder lines when there's no text.",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "size": {
+          "description": "Text size.",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
+        },
+        "muted": {
+          "description": "Grey instead of ink.",
+          "type": "boolean"
+        },
+        "filled": {
+          "description": "Dark fill.",
+          "type": "boolean"
+        },
+        "variant": {
+          "description": "primary = the main action (dark). Default secondary.",
+          "enum": [
+            "primary",
+            "secondary",
+            "outline",
+            "text"
+          ]
+        },
+        "icon": {
+          "description": "Icon name (see wf vocab icons).",
+          "enum": [
+            "menu",
+            "back",
+            "close",
+            "search",
+            "plus",
+            "minus",
+            "check",
+            "chevron-right",
+            "chevron-down",
+            "chevron-left",
+            "heart",
+            "star",
+            "cart",
+            "bag",
+            "user",
+            "users",
+            "home",
+            "bell",
+            "settings",
+            "share",
+            "more",
+            "map-pin",
+            "clock",
+            "calendar",
+            "camera",
+            "image",
+            "mail",
+            "phone",
+            "chat",
+            "filter",
+            "edit",
+            "trash",
+            "lock",
+            "info",
+            "alert",
+            "play",
+            "list",
+            "grid",
+            "download",
+            "upload",
+            "coffee",
+            "card",
+            "gift",
+            "bookmark",
+            "send",
+            "mic",
+            "refresh",
+            "logout",
+            "help",
+            "doc",
+            "folder",
+            "link",
+            "eye",
+            "sun",
+            "moon"
+          ]
+        },
+        "badge": {
+          "description": "Small count dot, e.g. \"2\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "label": {
+          "description": "Label above.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "hint": {
+          "description": "Placeholder.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "value": {
+          "description": "Typed value.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "error": {
+          "description": "Error text below.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "rows": {
+          "description": "Visible rows (default 3).",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "checked": {
+          "description": "Ticked.",
+          "type": "boolean"
+        },
+        "items": {
+          "description": "The options.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              }
+            }
+          ]
+        },
+        "on": {
+          "description": "Switched on.",
+          "type": "boolean"
+        },
+        "active": {
+          "description": "The selected one.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "back": {
+          "description": "Show a back arrow (goes back).",
+          "type": "boolean"
+        },
+        "actions": {
+          "description": "Icons on the right: icon names, or { icon, goes }.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              {
+                "$ref": "#/definitions/item"
+              }
+            ]
+          }
+        },
+        "large": {
+          "description": "Big title on its own line, left-aligned.",
+          "type": "boolean"
+        },
+        "pages": {
+          "description": "How many pages (default 5).",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "current": {
+          "description": "Current page (default 1).",
+          "type": "number",
+          "minimum": 1
+        },
+        "count": {
+          "description": "How many (default 3).",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "button": {
+          "description": "A button on the far right, e.g. \"Order now\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "aspect": {
+          "description": "Shape when there's no height: \"16:9\", \"1:1\", \"4:3\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "src": {
+          "description": "Optional image file path, sketchified.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "round": {
+          "description": "Round corners a lot (or a circle when square).",
+          "type": "boolean"
+        },
+        "chevrons": {
+          "description": "Show › on every row.",
+          "type": "boolean"
+        },
+        "dividers": {
+          "description": "Lines between rows (default true).",
+          "type": "boolean"
+        },
+        "cards": {
+          "description": "Each row as its own card.",
+          "type": "boolean"
+        },
+        "kind": {
+          "description": "Chart type (default bar).",
+          "enum": [
+            "bar",
+            "line",
+            "pie",
+            "donut"
+          ]
+        },
+        "type": {
+          "description": "What it is (from the catalogue).",
+          "enum": [
+            "stack",
+            "row",
+            "card",
+            "section",
+            "grid",
+            "sheet",
+            "dialog",
+            "title",
+            "heading",
+            "text",
+            "label",
+            "link",
+            "badge",
+            "button",
+            "icon-button",
+            "input",
+            "textarea",
+            "search",
+            "select",
+            "checkbox",
+            "radio",
+            "toggle",
+            "slider",
+            "stepper",
+            "segmented",
+            "chips",
+            "navbar",
+            "tabbar",
+            "tabs",
+            "breadcrumbs",
+            "pagination",
+            "dots",
+            "sidebar",
+            "topnav",
+            "image",
+            "avatar",
+            "icon",
+            "list",
+            "table",
+            "chart",
+            "map",
+            "video",
+            "rating",
+            "divider",
+            "spacer",
+            "keyboard",
+            "alert",
+            "toast",
+            "progress",
+            "steps",
+            "spinner",
+            "sketch"
+          ]
+        },
+        "use": {
+          "description": "Use a piece from the file's `shared` section instead of a type, e.g. \"use\": \"tabs\". Other props override it.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "id": {
+          "description": "A name for this element, so links, nudges and agent pointers can find it.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "goes": {
+          "description": "Tapping it goes to this screen id (or \"back\").",
+          "type": "string"
+        },
+        "pin": {
+          "description": "Float it over the screen instead of stacking it (\"bottom\", \"top-right\", ...).",
+          "enum": [
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "center",
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right"
+          ]
+        },
+        "width": {
+          "description": "\"fill\", \"hug\", or a number of px.",
+          "oneOf": [
+            {
+              "enum": [
+                "fill",
+                "hug"
+              ]
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ]
+        },
+        "height": {
+          "description": "Height in px (most things size themselves).",
+          "type": "number",
+          "minimum": 4
+        },
+        "grow": {
+          "description": "Take a share of leftover space along the stack (a spacer grows by default).",
+          "type": "number",
+          "minimum": 0
+        },
+        "note": {
+          "description": "A designer's note. Shown as a numbered sticky beside the screen on the canvas, never on the screen itself.",
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "meta": {
+          "type": "string"
+        },
+        "icon": {
+          "enum": [
+            "menu",
+            "back",
+            "close",
+            "search",
+            "plus",
+            "minus",
+            "check",
+            "chevron-right",
+            "chevron-down",
+            "chevron-left",
+            "heart",
+            "star",
+            "cart",
+            "bag",
+            "user",
+            "users",
+            "home",
+            "bell",
+            "settings",
+            "share",
+            "more",
+            "map-pin",
+            "clock",
+            "calendar",
+            "camera",
+            "image",
+            "mail",
+            "phone",
+            "chat",
+            "filter",
+            "edit",
+            "trash",
+            "lock",
+            "info",
+            "alert",
+            "play",
+            "list",
+            "grid",
+            "download",
+            "upload",
+            "coffee",
+            "card",
+            "gift",
+            "bookmark",
+            "send",
+            "mic",
+            "refresh",
+            "logout",
+            "help",
+            "doc",
+            "folder",
+            "link",
+            "eye",
+            "sun",
+            "moon"
+          ]
+        },
+        "image": {
+          "type": [
+            "boolean",
+            "string"
+          ]
+        },
+        "goes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
