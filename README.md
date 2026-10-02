@@ -30,7 +30,7 @@ which draws comic strips of a customer's whole day. Point any phone in a storybo
 (`"screen": "./order-ahead.wireframe.json#status"`) and it shows up on the device, in teal, because teal is
 how storyboards mark the product.
 
-![A storyboard using real wireframe screens](docs/in-a-storyboard-0f6adbe.png)
+![A storyboard using real wireframe screens](docs/in-a-storyboard-3eec28d.png)
 
 Change the wireframe and the storyboard catches up on its own. Now you can see the screen *and* the moment
 someone is staring at it, waiting for a latte that said 4 minutes 12 minutes ago.
