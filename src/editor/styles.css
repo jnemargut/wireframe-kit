@@ -51,6 +51,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .seg button { border: none; background: var(--color-paper); padding: 3px 10px; cursor: pointer; font-size: var(--text-xs); }
 .seg button.on { background: var(--color-ink); color: var(--color-paper); }
 .palette-find { width: 100%; border: 1.5px solid var(--color-400); padding: 5px 8px; background: #fff; }
+.upload-btn { display: block; text-align: center; margin: 6px 0 2px; cursor: pointer; }
 .palette-hint { font-size: 11px; color: var(--color-600); margin: 6px 0 2px; line-height: 1.4; }
 .palette h4 { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--color-600); margin: var(--space-3) 0 6px; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

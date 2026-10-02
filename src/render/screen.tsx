@@ -10,7 +10,7 @@ import { draw, HomeIndicator, StatusBar, type DrawCtx } from "./components";
 export interface ScreenOpts {
   /** Wobble on (off while dragging in the editor). */
   wobble?: boolean;
-  asset?: (src: string) => string | undefined;
+  asset?: (src: string, raw?: boolean) => string | undefined;
   /** Unique id prefix when several screens share one SVG. */
   uid?: string;
   /** Round the screen's corners (to sit inside a device body). */

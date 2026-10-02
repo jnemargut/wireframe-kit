@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { PDFDocument } from "pdf-lib";
 import { bakeImage } from "../vendor/sketch/bake";
 import { drawingFonts, fontFaceCss } from "../vendor/sketch/fonts";
@@ -17,16 +17,22 @@ export const stemOf = (file: string) => basename(file).replace(/\.wireframe\.jso
 /** Where a screen's PNG goes: next to the file, "<name>.<screen>.png" (what Storyboard Kit looks for). */
 export const screenPNGPath = (file: string, screen: string) => join(dirname(resolve(file)), `${stemOf(file)}.${screen}.png`);
 
-/** Image `src` paths become sketchified (gray) data URIs. */
+const MIME: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
+
+/** Image `src` paths become sketchified (gray) data URIs, or the picture as it is with `raw`. */
 export function assetResolver(file: string) {
   const base = dirname(resolve(file));
   const memo = new Map<string, string | undefined>();
-  return (p: string) => {
-    if (memo.has(p)) return memo.get(p);
+  return (p: string, raw?: boolean) => {
+    const k = `${p}:${!!raw}`;
+    if (memo.has(k)) return memo.get(k);
     const abs = resolve(base, p);
     let uri: string | undefined;
-    if (existsSync(abs)) { try { uri = `data:image/png;base64,${bakeImage(abs, cacheDirFor(file), 1, "grey").toString("base64")}`; } catch { uri = undefined; } }
-    memo.set(p, uri);
+    if (existsSync(abs)) {
+      try { uri = raw ? `data:${MIME[extname(abs).toLowerCase()] ?? "image/png"};base64,${readFileSync(abs).toString("base64")}` : `data:image/png;base64,${bakeImage(abs, cacheDirFor(file), 1, "grey").toString("base64")}`; }
+      catch { uri = undefined; }
+    }
+    memo.set(k, uri);
     return uri;
   };
 }

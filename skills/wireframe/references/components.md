@@ -431,11 +431,12 @@ Images, lists, tables, charts and other placeholders.
 
 ### `image`
 
-An image placeholder (a crossed box). Give `src` to use a real picture; it's sketchified in grays.
+An image placeholder (a crossed box). Give `src` to use a real picture; it's sketchified in grays (`"sketch": false` shows it as it is).
 
   - `label`: What the picture is.
   - `aspect`: Shape when there's no height: "16:9", "1:1", "4:3".
   - `src`: Optional image file path, sketchified.
+  - `sketch`: false shows the picture as it is, instead of sketchified in grays.
   - `round`: Round corners a lot (or a circle when square).
 
 ```json

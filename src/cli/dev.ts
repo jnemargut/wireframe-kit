@@ -4,7 +4,7 @@ import { basename, dirname, extname, join, relative, resolve, sep } from "node:p
 import { fileURLToPath } from "node:url";
 import { bakeImage } from "../../vendor/sketch/bake";
 import { applyOps, formatJSON, type Op } from "../../vendor/sketch/json";
-import { eventHub, listenFree, openBrowser, readBody, safePathUnder, sendJSON, serveStatic } from "../../vendor/sketch/server";
+import { eventHub, listenFree, openBrowser, readBody, safePathUnder, sendJSON, serveStatic, TYPES } from "../../vendor/sketch/server";
 import { cacheDirFor, flowPNG, flowSVGFile, screenPNG, stemOf, toPDF } from "../export";
 import type { WireframeFile } from "../types";
 import { validate } from "../validate";
@@ -62,6 +62,7 @@ export async function dev(file: string, o: DevOptions) {
       if (url.pathname.startsWith("/baked/")) {
         const p = safePathUnder(base, url.pathname.slice("/baked/".length));
         if (!p || !existsSync(p)) { res.writeHead(404); return res.end(); }
+        if (url.searchParams.get("raw")) { res.writeHead(200, { "content-type": TYPES[extname(p).toLowerCase()] ?? "image/png", "cache-control": "no-cache" }); return res.end(readFileSync(p)); }
         res.writeHead(200, { "content-type": "image/png", "cache-control": "no-cache" });
         return res.end(bakeImage(p, cacheDirFor(abs), 1, "grey"));
       }

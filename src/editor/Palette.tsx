@@ -6,7 +6,7 @@ import { NodePreview } from "./Preview";
 export const NODE_MIME = "application/x-wireframe-node";
 
 /** Every component (and icon) as a real thumbnail. Click to add it to the layout; drag it onto a screen to place it freely. */
-export function Palette({ onInsert, onClose }: { onInsert: (node: Record<string, unknown>) => void; onClose: () => void }) {
+export function Palette({ onInsert, onClose, onUpload }: { onInsert: (node: Record<string, unknown>) => void; onClose: () => void; onUpload: (f: File) => void }) {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"components" | "icons">("components");
   const g = q.trim().toLowerCase();
@@ -25,6 +25,10 @@ export function Palette({ onInsert, onClose }: { onInsert: (node: Record<string,
       </div>
       <input type="search" className="palette-find" placeholder={tab === "icons" ? "Find an icon" : "Find a component"} value={q} onChange={(e) => setQ(e.target.value)} />
       <p className="palette-hint">Click to add to the layout. Drag onto a screen to place it anywhere.</p>
+      <label className="btn small upload-btn" title="A photo, a screenshot or a sketch. It's sketchified in grays to match (switch that off in the inspector). You can also drop or paste images onto a screen.">
+        Add an image…
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
+      </label>
       {tab === "icons" ? (
         <div className="icon-grid">
           {ICONS.filter((i) => !g || i.includes(g)).map((i) => {

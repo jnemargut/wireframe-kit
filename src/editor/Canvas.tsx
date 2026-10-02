@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type PointerEvent as RPE } from "react";
+import { RichHTML } from "../../vendor/sketch/rich";
 import { shapeBox } from "../../vendor/sketch/shapes";
+import type { DrawTool } from "../../vendor/sketch/tools";
+import { useWheelView, type View } from "../../vendor/sketch/view";
 import type { Layout } from "../layout";
 import { ArrowPath, bezelOf, Frame, Notes, type Arrow } from "../render/flow";
 import { ScreenArt, shapeScale } from "../render/screen";
 import type { WireframeFile } from "../types";
 import type { Sel } from "./model";
 
-export interface View { x: number; y: number; k: number }
-export type Tool = "select" | "pen" | "rect" | "ellipse" | "line" | "arrow" | "text";
+export type { View };
+export type Tool = DrawTool;
 export interface Rect { x: number; y: number; w: number; h: number }
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
@@ -35,7 +38,7 @@ interface Props {
   onEditDone: (value: string | null) => void;
   onDropNode: (screen: string, x: number, y: number, payload: string) => void;
   onDropFile: (screen: string | null, x: number, y: number, file: File) => void;
-  asset: (src: string) => string | undefined;
+  asset: (src: string, raw?: boolean) => string | undefined;
   dragging: boolean;
   setDragging: (d: boolean) => void;
 }
@@ -116,24 +119,7 @@ export function Canvas(p: Props) {
   }, []);
 
   // wheel: pinch / ctrl+wheel zooms around the cursor, plain wheel pans
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if ((e.target as HTMLElement).closest(".inline-edit")) return;
-      e.preventDefault();
-      const r = el.getBoundingClientRect();
-      if (e.ctrlKey || e.metaKey) {
-        const cx = e.clientX - r.left, cy = e.clientY - r.top;
-        p.setView((v) => {
-          const k = Math.min(3, Math.max(0.1, v.k * Math.exp(-e.deltaY * 0.01)));
-          return { k, x: cx - ((cx - v.x) * k) / v.k, y: cy - ((cy - v.y) * k) / v.k };
-        });
-      } else p.setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [p.setView]);
+  useWheelView(ref, p.setView);
 
   const world = (e: { clientX: number; clientY: number }) => {
     const r = ref.current!.getBoundingClientRect();
@@ -286,7 +272,7 @@ export function Canvas(p: Props) {
           return (
             <div key={id}>
               <div className={`screen-title${p.sel?.screen === id && !p.sel.key ? " on" : ""}`} data-title={id} style={{ left: x - bz.l, top: y - bz.t - 58 }}>
-                <span className="t">{sc.title ?? id}</span>
+                <span className="t"><RichHTML src={sc.title ?? id} /></span>
                 <span className="id">{id} · {l.w}×{l.h}{(p.doc.start ?? Object.keys(p.doc.screens)[0]) === id ? " · start" : ""}</span>
               </div>
               <svg key={repaint.screen === id ? `r${repaint.n}` : "s"} className="shot" data-screen={id} width={l.w} height={l.h} viewBox={`0 0 ${l.w} ${l.h}`} style={{ left: x, top: y }} overflow="visible">

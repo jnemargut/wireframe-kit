@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { plainText, RichHTML } from "../../vendor/sketch/rich";
 import { DeviceChrome } from "../../vendor/sketch/device-chrome";
 import type { MarkupStroke } from "../../vendor/sketch/shapes";
 import { MARKER } from "../../vendor/sketch/tokens";
@@ -6,13 +7,13 @@ import { layoutScreen, type Rect } from "../layout";
 import { bezelOf } from "../render/flow";
 import { ScreenArt, shapeScale } from "../render/screen";
 import type { WireframeFile } from "../types";
-import { COLORS } from "./Tools";
+import { COLORS } from "../../vendor/sketch/tools";
 
 interface Hot extends Rect { key: string; goes: string }
 type MarkTool = "pen" | "eraser" | null;
 
 /** Click through the flow like the real thing. Links glow orange (what a person does); a sharpie for crits; Esc leaves. */
-export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFile; start: string; onExit: (last: string) => void; asset: (src: string) => string | undefined; onMarkup: (screen: string, strokes: MarkupStroke[]) => void }) {
+export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFile; start: string; onExit: (last: string) => void; asset: (src: string, raw?: boolean) => string | undefined; onMarkup: (screen: string, strokes: MarkupStroke[]) => void }) {
   const [stack, setStack] = useState<string[]>([start]);
   const [hover, setHover] = useState<string | null>(null);
   const [tap, setTap] = useState<{ x: number; y: number; n: number } | null>(null);
@@ -83,7 +84,7 @@ export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFi
   return (
     <div className={`play${tool ? ` marking ${tool}` : ""}`}>
       <div className="play-top">
-        <span className="play-title">{doc.screens[screen]?.title ?? screen}</span>
+        <span className="play-title"><RichHTML src={doc.screens[screen]?.title ?? screen} /></span>
         <span className="play-count">{screen} · {stack.length > 1 ? `${stack.length - 1} step${stack.length > 2 ? "s" : ""} in` : "start"}</span>
         <span className="spacer" />
         <div className="play-tools" role="group" aria-label="Markup">
@@ -152,9 +153,9 @@ function Thumb({ doc, id, on, onClick }: { doc: WireframeFile; id: string; on: b
   const l = useMemo(() => layoutScreen(doc, id), [doc, id]);
   const h = 96, w = Math.max(40, Math.min(170, (l.w / l.h) * h));
   return (
-    <button className={`thumb${on ? " on" : ""}`} onClick={onClick} title={doc.screens[id].title ?? id}>
+    <button className={`thumb${on ? " on" : ""}`} onClick={onClick} title={plainText(doc.screens[id].title ?? id)}>
       <svg width={w} height={h} viewBox={`0 0 ${l.w} ${l.h}`}><ScreenArt layout={l} shapes={doc.screens[id].shapes} opts={{ uid: `th-${id}`, wobble: false, rx: 12 }} /></svg>
-      <span>{doc.screens[id].title ?? id}</span>
+      <span><RichHTML src={doc.screens[id].title ?? id} /></span>
     </button>
   );
 }

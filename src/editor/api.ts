@@ -19,5 +19,5 @@ export const api = {
     fetch(`/api/upload?name=${encodeURIComponent(file.name)}`, { method: "POST", headers: { "x-wireframe": "1" }, body: file }).then((r) => ok<{ path: string }>(r)),
 };
 
-/** Image `src` paths, sketchified in grays by the dev server. */
-export const bakedUrl = (bust: number) => (p: string) => `/baked/${p.replace(/^\.\//, "").split("/").map(encodeURIComponent).join("/")}?v=${bust}`;
+/** Image `src` paths, sketchified in grays by the dev server (or as they are, with raw). */
+export const bakedUrl = (bust: number) => (p: string, raw?: boolean) => `/baked/${p.replace(/^\.\//, "").split("/").map(encodeURIComponent).join("/")}?v=${bust}${raw ? "&raw=1" : ""}`;

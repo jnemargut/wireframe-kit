@@ -9,7 +9,7 @@ import { deviceSize, resolveNode } from "../types";
 import { COMPONENTS } from "../vocab";
 import { api, bakedUrl } from "./api";
 import { Canvas, selRectOf, type InlineEdit, type Rect, type Tool, type View } from "./Canvas";
-import { Tools } from "./Tools";
+import { TOOL_KEYS, Tools } from "../../vendor/sketch/tools";
 import { Inspector, type InspectorActions } from "./Inspector";
 import * as M from "./model";
 import { Palette } from "./Palette";
@@ -182,8 +182,11 @@ export function App() {
       if (!sel) return;
       try {
         const blob = fetch(`/api/screen.png?id=${encodeURIComponent(sel.screen)}&scale=2`).then((r) => r.blob());
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        flash("Screen copied as an image. Paste it into Slack, Miro, Figma…");
+        // a note riding along (where browsers allow it) so Flowchart Kit pastes a live card, not a flat picture
+        const note = new Blob([JSON.stringify({ wireframeScreen: 1, file, screen: sel.screen })], { type: "application/x-wireframe-screen" });
+        const custom = (ClipboardItem as unknown as { supports?: (t: string) => boolean }).supports?.("web application/x-wireframe-screen");
+        await navigator.clipboard.write([new ClipboardItem(custom ? { "image/png": blob, "web application/x-wireframe-screen": note } : { "image/png": blob })]);
+        flash("Screen copied as an image. Paste it into Slack, Figma, a doc, or a Flowchart Kit board…");
       } catch { flash("This browser won't copy images. Use Export instead."); }
     },
     play: (screen) => setPlay(screen ?? (doc ? startScreen(doc) : null)),
@@ -389,6 +392,24 @@ export function App() {
 
   const onInsert = (node: Record<string, unknown>) => insertNode(M.clone(node));
 
+  /** An image from the clipboard or the upload button: into the selected image, else onto the screen you're on. */
+  const addImage = (f: File) => {
+    if (!doc) return;
+    const screen = focusedScreen();
+    const l = layouts[screen];
+    if (!screen || !l) return;
+    onDropFile(screen, Math.round(l.w / 2), Math.round(l.h / 3), f);
+  };
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (play || (e.target as HTMLElement).closest("input,textarea,select,[contenteditable]")) return;
+      const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith("image/"));
+      if (f) { e.preventDefault(); addImage(f); }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  });
+
   const onMarkup = (screen: string, strokes: MarkupStroke[]) => { if (doc) edit(M.setAt(doc, ["screens", screen, "markup"], strokes.length ? strokes : undefined)); };
 
   // keyboard
@@ -411,7 +432,7 @@ export function App() {
         return;
       }
       if (!mod && !e.altKey) {
-        const t = ({ v: "select", d: "pen", r: "rect", o: "ellipse", l: "line", a: "arrow", t: "text" } as Record<string, Tool>)[e.key.toLowerCase()];
+        const t = TOOL_KEYS[e.key.toLowerCase()];
         if (t) { setTool(t); return; }
       }
       if ((e.key === "Delete" || e.key === "Backspace") && sel) { e.preventDefault(); a.remove(); return; }
@@ -487,7 +508,7 @@ export function App() {
         <button className="btn dark" onClick={() => a.play(sel?.screen)} title="Click through the flow (P)">Play</button>
       </header>
       <div className={`main${palette ? " with-palette" : ""}`}>
-        {palette ? <Palette onInsert={onInsert} onClose={() => setPalette(false)} /> : null}
+        {palette ? <Palette onInsert={onInsert} onClose={() => setPalette(false)} onUpload={addImage} /> : null}
         <div className="canvas-wrap" ref={canvasEl}>
           <Canvas doc={shown} layouts={layouts} pos={pos} arrows={arr} below={laneSpace(arr)} view={view} setView={setView}
             sel={sel} onSelect={setSel} tool={tool} onMove={onMove} onResize={onResize} onMoveScreen={onMoveScreen}

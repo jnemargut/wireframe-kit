@@ -5,7 +5,7 @@ import { resolveNode, startScreen, type Item, type WireframeFile, type WNode } f
 import { CATEGORIES, CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, type PropDef } from "../vocab";
 import { MARKER } from "../../vendor/sketch/tokens";
 import { Icon } from "../render/icons";
-import { COLORS } from "./Tools";
+import { COLORS } from "../../vendor/sketch/tools";
 import { getAt, keyOf, pathOf, type Sel } from "./model";
 
 export interface InspectorActions {

@@ -2,6 +2,7 @@
  * How each component is drawn. Every drawing returns two layers: `shape` (outlines and fills, which get
  * the marker wobble) and `words` (text and icons, kept crisp so dense screens stay readable).
  */
+import { plainText, richLines } from "../../vendor/sketch/rich";
 import type { ReactNode } from "react";
 import { C } from "../../vendor/sketch/tokens";
 import { aspect, chipRects, FS, itemRects, itemsOf, lineH, listRows, typeOf, type Box } from "../layout";
@@ -13,7 +14,7 @@ import { hasIcon, Icon } from "./icons";
 export interface Drawn { shape?: ReactNode; words?: ReactNode }
 export interface DrawCtx {
   /** Resolve an image `src` to an href (already sketchified). */
-  asset?: (src: string) => string | undefined;
+  asset?: (src: string, raw?: boolean) => string | undefined;
   /** Unique prefix for clip-path ids. */
   uid: string;
 }
@@ -24,7 +25,7 @@ const s = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v
 const fontOf = (face: Face) => (face === "title" ? "Permanent Marker" : "Patrick Hand");
 
 function T({ x, y, text, size, face = "hand", fill = ink, anchor = "start", underline }: { x: number; y: number; text: string; size: number; face?: Face; fill?: string; anchor?: "start" | "middle" | "end"; underline?: boolean }) {
-  return <text x={x} y={y} fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor} textDecoration={underline ? "underline" : undefined}>{text}</text>;
+  return <text x={x} y={y} fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor} textDecoration={underline ? "underline" : undefined}>{richLines(text, [plainText(text)], fill, size)[0]}</text>;
 }
 /** Single line, vertically centered in (y, h). */
 const mid1 = (y: number, h: number, size: number) => y + h / 2 + size * 0.34;
@@ -36,7 +37,7 @@ function Para({ x, y, w, text, size, face = "hand", fill = ink, align = "start",
   const ax = align === "center" ? x + w / 2 : align === "end" ? x + w : x;
   const anchor = align === "center" ? "middle" : align === "end" ? "end" : "start";
   const base = y + (lh - size) / 2 + size * 0.84;
-  return <text fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor}>{ls.map((l, i) => <tspan key={i} x={ax} y={base + i * lh}>{l}</tspan>)}</text>;
+  return <text fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor}>{richLines(text, ls, fill, size).map((l, i) => <tspan key={i} x={ax} y={base + i * lh}>{l}</tspan>)}</text>;
 }
 
 const R = (x: number, y: number, w: number, h: number, o: { rx?: number; fill?: string; stroke?: string; sw?: number; dash?: string } = {}) =>
@@ -279,7 +280,7 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     // ---------- content ----------
     case "image": {
       const rx = n.round ? (Math.abs(w - h) < 2 ? w / 2 : 18) : 8;
-      const href = n.src && ctx.asset ? ctx.asset(s(n.src)) : undefined;
+      const href = n.src && ctx.asset ? ctx.asset(s(n.src), n.sketch === false) : undefined;
       if (href) {
         const id = `${uid}-img`;
         return { shape: <g><clipPath id={id}><rect x={x} y={y} width={w} height={h} rx={rx} /></clipPath><image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id})`} />{R(x, y, w, h, { rx })}</g> };

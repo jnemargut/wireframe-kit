@@ -35,6 +35,12 @@ how storyboards mark the product.
 Change the wireframe and the storyboard catches up on its own. Now you can see the screen *and* the moment
 someone is staring at it, waiting for a latte that said 4 minutes 12 minutes ago.
 
+## And Flowchart Kit
+
+The third kit, [Flowchart Kit](https://github.com/jnemargut/flowchart-kit), is a low-fi canvas for flows, sticky
+notes and presenting. Put any screen or whole flow on a board as a card, next to the storyboard panel where someone
+is using it. Copy a screen here and paste it onto a board: it lands as a live card that follows this file.
+
 ## Install (about 30 seconds)
 
 You need Node.js 18 or newer. That's it. No `npm install`, no build step, nothing native.
@@ -87,7 +93,10 @@ Or just click around yourself. Your edits and the agent's edits land in the same
 - **Layout that just works.** Your agent stacks things down the screen, puts them side by side in rows, or
   floats them in a corner. It never writes coordinates, so nothing ends up 3 pixels off.
 - **Notes.** Little numbered stickies beside a screen for the "why", so the screen itself stays clean.
-- **Any picture at all.** Drop in a photo and it gets sketchified in grays to match.
+- **Any picture at all.** Drop, paste or upload a photo and it gets sketchified in grays to match (or shows as it
+  is, your call).
+- **Bold, italic and strikethrough** in any text: `**bold**`, `*italic*`, `~~$6.50~~`, or Cmd+B and Cmd+I in
+  the editor.
 
 ### Any size, side by side
 
@@ -143,7 +152,7 @@ Links glow orange when you hover; Back, ← or the navbar arrow take you back.
 
 The whole flow as one PNG or SVG, a PDF with the flow plus a page per screen, or one PNG per screen. Each
 screen PNG carries its own source inside it, and **Copy as image** puts a screen on your clipboard for Slack,
-Miro or Figma.
+Figma, or a Flowchart Kit board (where it lands as a live card).
 
 ## Under the hood
 
@@ -174,10 +183,10 @@ npm run e2e       # clicks around the real editor in Chrome
 the editor's palette all read from it. `skills/wireframe/` is generated from `src/`, and it's checked in so
 you can install straight from a clone.
 
-The marker drawing bits (tokens, fonts, the wobble, sketchify, PNG rendering) are shared with Storyboard Kit.
-They live in Storyboard Kit's `src/sketch/`, and `vendor/sketch/` here is an exact copy. Change them over
-there, then run `npm run sync-sketch`. The build refuses to run if the copy was edited by hand, so the two kits
-never quietly drift apart.
+The marker drawing bits (tokens, fonts, the wobble, sketchify, PNG rendering, rich text, the drawing toolbar,
+pan and zoom) are shared with Storyboard Kit and Flowchart Kit. They live in Storyboard Kit's `src/sketch/`, and
+`vendor/sketch/` here is an exact copy. Change them over there, then run `npm run sync-sketch`. The build refuses
+to run if the copy was edited by hand, so the kits never quietly drift apart.
 
 ## License
 

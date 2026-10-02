@@ -554,6 +554,10 @@
             "number"
           ]
         },
+        "sketch": {
+          "description": "false shows the picture as it is, instead of sketchified in grays.",
+          "type": "boolean"
+        },
         "round": {
           "description": "Round corners a lot (or a circle when square).",
           "type": "boolean"

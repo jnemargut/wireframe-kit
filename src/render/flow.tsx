@@ -2,6 +2,7 @@
  * The flow canvas (decision 7): every screen in a device frame, side by side, with arrows for links and the
  * designer's notes as stickies. The editor draws this live; `wf export` renders the same thing to a file.
  */
+import { plainText, richLines } from "../../vendor/sketch/rich";
 import { renderToStaticMarkup } from "react-dom/server";
 import { C } from "../../vendor/sketch/tokens";
 import { WobbleFilter } from "../../vendor/sketch/wobble";
@@ -100,7 +101,7 @@ export function Frame({ l, file, x, y, title, sub }: { l: Layout; file: Wirefram
   const fx = x - bz.l, fy = y - bz.t;
   return (
     <g>
-      {title ? <text x={fx} y={fy - 28} fontFamily="Permanent Marker" fontSize={24} fill={C.ink}>{title}</text> : null}
+      {title ? <text x={fx} y={fy - 28} fontFamily="Permanent Marker" fontSize={24} fill={C.ink}>{richLines(title, [plainText(title)], C.ink, 24)[0]}</text> : null}
       {sub ? <text x={fx} y={fy - 10} fontFamily="Patrick Hand" fontSize={15} fill={C.g7}>{sub}</text> : null}
       {bz.kind !== "none" ? <DeviceChrome kind={bz.kind} x={x} y={y} w={l.w} h={l.h} /> : null}
     </g>
@@ -134,11 +135,12 @@ export function Notes({ l, file, x, y, below = 0 }: { l: Layout; file: Wireframe
         return <g key={n.key}><circle cx={x + b.x + b.w - 4} cy={y + b.y + 4} r={12} fill={C.caption} stroke={C.ink} strokeWidth={1.8} /><text x={x + b.x + b.w - 4} y={y + b.y + 9.5} textAnchor="middle" fontFamily="Patrick Hand" fontSize={15} fill={C.ink}>{n.n}</text></g>;
       })}
       {l.notes.map((n) => {
-        const lines = wrap(`${n.n ? `${n.n}. ` : ""}${n.text}`, "hand", 16, w - 28);
+        const src = `${n.n ? `${n.n}. ` : ""}${n.text}`;
+        const lines = wrap(src, "hand", 16, w - 28);
         const h = lines.length * 21 + 18;
         const top = sy;
         sy += h + 10;
-        return <g key={`s-${n.key}`}><rect x={x - bz.l} y={top} width={w} height={h} fill={C.caption} stroke={C.ink} strokeWidth={1.6} transform={`rotate(${n.n % 2 ? -0.6 : 0.5} ${x} ${top})`} /><text fontFamily="Patrick Hand" fontSize={16} fill={C.ink}>{lines.map((ln, i) => <tspan key={i} x={x - bz.l + 14} y={top + 24 + i * 21}>{ln}</tspan>)}</text></g>;
+        return <g key={`s-${n.key}`}><rect x={x - bz.l} y={top} width={w} height={h} fill={C.caption} stroke={C.ink} strokeWidth={1.6} transform={`rotate(${n.n % 2 ? -0.6 : 0.5} ${x} ${top})`} /><text fontFamily="Patrick Hand" fontSize={16} fill={C.ink}>{richLines(src, lines, C.ink, 16).map((ln, i) => <tspan key={i} x={x - bz.l + 14} y={top + 24 + i * 21}>{ln}</tspan>)}</text></g>;
       })}
     </g>
   );
@@ -195,7 +197,7 @@ export function flowSVG(file: WireframeFile, o: ScreenOpts & { fontCss?: string 
     <svg xmlns="http://www.w3.org/2000/svg" width={W} height={H} viewBox={`${b.x - m} ${b.y - m - head} ${W} ${H}`}>
       {o.fontCss ? <style>{o.fontCss}</style> : null}
       <rect x={b.x - m} y={b.y - m - head} width={W} height={H} fill={C.paper} />
-      <text x={b.x} y={b.y - head + 4} fontFamily="Permanent Marker" fontSize={36} fill={C.ink}>{file.title}</text>
+      <text x={b.x} y={b.y - head + 4} fontFamily="Permanent Marker" fontSize={36} fill={C.ink}>{richLines(file.title, [plainText(file.title)], C.ink, 36)[0]}</text>
       <FlowArt file={file} opts={o} />
     </svg>,
   );

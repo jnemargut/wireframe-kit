@@ -1,4 +1,5 @@
 /** Hand-drawn shapes (boxes, ovals, lines, arrows, freehand, free text) and crit markup, in marker style. */
+import { plainText, richLines } from "./rich";
 import { C, FONT, MARKER } from "./tokens";
 
 /** "rect" | "ellipse" | "line" | "arrow" | "path" | "text" (each kit's vocabulary checks the values). */
@@ -59,13 +60,13 @@ export function ShapeMark({ s, scale = 1 }: { s: SketchShape; scale?: number }) 
     const [x, y] = s.points[0];
     const lines = (s.text ?? "").split("\n");
     const size = 16 * scale, lh = size * 1.2;
-    const w = Math.max(24 * scale, ...lines.map((l) => l.length * size * 0.45)), h = lines.length * lh;
+    const w = Math.max(24 * scale, ...lines.map((l) => plainText(l).length * size * 0.45)), h = lines.length * lh;
     const top = y - h / 2 + size * 0.85;
     return (
       <g>
         <rect x={x - w / 2 - 4} y={y - h / 2 - 3} width={w + 8} height={h + 6} fill="transparent" />
         <text textAnchor="middle" fontFamily={FONT.hand} fontSize={size} fill={s.color && s.color !== "yellow" ? MARKER[s.color] : C.ink} stroke={s.color === "yellow" ? MARKER.yellow : C.paper} strokeWidth={3.5 * scale} strokeLinejoin="round" paintOrder="stroke">
-          {lines.map((l, i) => <tspan key={i} x={x} y={top + i * lh}>{l || " "}</tspan>)}
+          {lines.map((l, i) => <tspan key={i} x={x} y={top + i * lh}>{l ? richLines(l, [plainText(l)], s.color && s.color !== "yellow" ? MARKER[s.color] : C.ink, size)[0] : " "}</tspan>)}
         </text>
       </g>
     );
