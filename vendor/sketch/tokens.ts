@@ -1,6 +1,6 @@
 /**
  * Marker Comp: the shared drawing tokens for Storyboard Kit and Wireframe Kit.
- * Greys for the world, teal for the product (and nothing else), orange for what a person does.
+ * Grays for the world, teal for the product (and nothing else), orange for what a person does.
  */
 export const C = {
   ink: "#1c1c1e",
@@ -19,7 +19,7 @@ export const C = {
   action: "#e8590c",
 } as const;
 
-/** Marker colours. Yellow is a highlighter: wide and see-through. */
+/** Marker colors. Yellow is a highlighter: wide and see-through. */
 export const MARKER: Record<string, string> = { ink: "#1c1c1e", grey: "#6f777f", red: "#d9363e", blue: "#2f6fd0", green: "#2f9e44", yellow: "#f7c948" };
 
 export const STROKE = { line: 2.1, detail: 1.3, panel: 2.6 };

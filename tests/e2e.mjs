@@ -45,7 +45,7 @@ await page.goto(url);
 await page.waitForSelector("svg.shot");
 ok("canvas shows every screen", (await page.locator("svg.shot").count()) === 4);
 
-/** Page coordinates of an element's centre on a screen. */
+/** Page coordinates of an element's center on a screen. */
 const at = async (screen, key) => page.evaluate(([s, k]) => {
   const { layouts, pos, view } = window.__wf;
   const l = layouts[s];
@@ -74,15 +74,63 @@ ok("undo removes the nudge", await until(() => !read().layout?.cart?.pay));
 await page.mouse.click(10 + (await page.locator(".canvas").boundingBox()).x, 10 + (await page.locator(".canvas").boundingBox()).y);
 p = await at("cart", "children/1");
 await page.mouse.click(p.x, p.y);
-await page.locator(".tile", { hasText: /^badge$/ }).click();
+await page.locator(".tile").filter({ has: page.locator(".name", { hasText: /^badge$/ }) }).click();
 ok("palette inserts into the selected card", await until(() => JSON.stringify(read().screens.cart.children[1]).includes('"badge"')));
+
+// selection drills in: first the list, then the row
+await page.keyboard.press("Escape"); await page.keyboard.press("Escape"); await page.keyboard.press("Escape");
+const row = await at("menu", "children/3#0");
+await page.mouse.click(row.x, row.y);
+const first = await page.evaluate(() => window.__wf.sel?.key);
+await page.mouse.click(row.x, row.y);
+const second = await page.evaluate(() => window.__wf.sel?.key);
+ok("first click picks the list, the next one its row", first === "children/3" && second === "children/3#0", `${first} → ${second}`);
+await page.keyboard.press("Escape");
+ok("Esc steps out to the parent", (await page.evaluate(() => window.__wf.sel?.key)) === "children/3");
+
+// edit words in place
+const title = await at("menu", "children/0");
+await page.mouse.dblclick(title.x, title.y);
+await page.locator(".inline-edit").fill("Corner Coffee Co.");
+await page.keyboard.press("Enter");
+ok("double-click edits text in place", await until(() => read().screens.menu.children[0].text === "Corner Coffee Co."));
+
+// drag a component from the palette onto a screen: it lands free, where it was dropped
+const dt = await page.evaluateHandle(() => new DataTransfer());
+const tile = page.locator(".tile").filter({ has: page.locator(".name", { hasText: /^button$/ }) });
+await tile.dispatchEvent("dragstart", { dataTransfer: dt });
+const origin = await page.evaluate(() => { const { pos, view } = window.__wf; const c = document.querySelector(".canvas").getBoundingClientRect(); return { x: c.left + view.x + pos.menu[0] * view.k, y: c.top + view.y + pos.menu[1] * view.k, k: view.k }; });
+await page.locator(".canvas").dispatchEvent("drop", { dataTransfer: dt, clientX: origin.x + 200 * origin.k, clientY: origin.y + 500 * origin.k });
+ok("dropping from the palette places it freely", await until(() => read().screens.menu.children.some((c) => Array.isArray(c.at) && c.type === "button")));
+const freeKey = await page.evaluate(() => window.__wf.sel?.key);
+const fb = await at("menu", freeKey);
+await page.mouse.move(fb.x, fb.y); await page.mouse.down(); await page.mouse.move(fb.x + 40, fb.y + 30, { steps: 5 }); await page.mouse.up();
+ok("dragging a free element moves its spot", await until(() => { const c = read().screens.menu.children.find((x) => Array.isArray(x.at) && x.type === "button"); return c && Math.abs(c.at[1] - (500 - 24)) > 20; }));
+const he = await page.locator(".handle.h-e").boundingBox();
+await page.mouse.move(he.x + 4, he.y + 4); await page.mouse.down(); await page.mouse.move(he.x + 60, he.y + 4, { steps: 5 }); await page.mouse.up();
+ok("handles resize it", await until(() => { const c = read().screens.menu.children.find((x) => Array.isArray(x.at) && x.type === "button"); return c && c.width > 300; }));
+
+// draw a red box
+await page.keyboard.press("Escape");
+await page.locator(".tools button[title='Box (R)']").click();
+await page.locator(".tool-color > button").click();
+await page.locator(".color-pop button[title='red']").click();
+await page.mouse.move(origin.x + 40 * origin.k, origin.y + 300 * origin.k); await page.mouse.down(); await page.mouse.move(origin.x + 250 * origin.k, origin.y + 380 * origin.k, { steps: 5 }); await page.mouse.up();
+ok("the box tool draws on the screen", await until(() => read().screens.menu.shapes?.some((x) => x.type === "rect" && x.color === "red")));
+await page.keyboard.press("v");
+
+// any screen size
+await page.locator(".screen-list button", { hasText: "Oat latte" }).first().click().catch(async () => { await page.keyboard.press("Escape"); await page.keyboard.press("Escape"); await page.locator(".screen-list button", { hasText: "Oat latte" }).first().click(); });
+await page.locator(".inspector select").first().selectOption("custom");
+ok("a screen can take a custom size", await until(() => typeof read().screens.drink.device === "object"));
 
 // agent edits reload live
 const d = read(); d.screens.menu.title = "Menu (agent edit)"; writeFileSync(file, JSON.stringify(d, null, 2));
 ok("agent edits show up live", await until(async () => (await page.locator(".screen-title .t", { hasText: "Menu (agent edit)" }).count()) > 0));
 
 // rename a screen: links follow
-await page.locator(".screen-title", { hasText: "Order status" }).click();
+for (let i = 0; i < 4; i++) await page.keyboard.press("Escape");
+await page.locator(".screen-list button", { hasText: "Order status" }).click();
 const idInput = page.getByRole("textbox", { name: "Id", exact: true });
 await idInput.fill("tracking"); await idInput.press("Enter");
 ok("renaming a screen updates every link", await until(() => { const r = read(); return !!r.screens.tracking && !JSON.stringify(r).includes('"goes": "status"') && !JSON.stringify(r).includes('"goes":"status"'); }));
@@ -96,6 +144,18 @@ const item = await page.evaluate(() => { const l = window.__wf.layouts.menu; ret
 const k = dev.width / 390;
 await page.mouse.click(dev.x + (item.x + item.w / 2) * k, dev.y + (item.y + item.h / 2) * k);
 ok("play follows a link", await until(async () => (await page.locator(".play-title").textContent()) === "Oat latte"));
+await page.keyboard.press("d");
+const pd = await page.locator(".play-device").boundingBox();
+await page.mouse.move(pd.x + 40, pd.y + 200); await page.mouse.down();
+for (let i = 1; i < 8; i++) await page.mouse.move(pd.x + 40 + i * 15, pd.y + 200 + (i % 2) * 10);
+await page.mouse.up();
+ok("the play-mode sharpie saves its marks", await until(() => (read().screens.drink.markup ?? []).length === 1));
+await page.keyboard.press("d");
+await page.keyboard.press("s");
+ok("the screens strip shows every screen", await until(async () => (await page.locator(".play-strip .thumb").count()) === Object.keys(read().screens).length));
+await page.locator(".play-strip .thumb").filter({ hasText: "Your order" }).click();
+ok("the strip jumps to any screen", await until(async () => (await page.locator(".play-title").textContent()) === "Your order"));
+await page.keyboard.press("ArrowLeft");
 await page.keyboard.press("ArrowLeft");
 ok("play goes back", await until(async () => (await page.locator(".play-title").textContent())?.startsWith("Menu")));
 await page.keyboard.press("Escape");

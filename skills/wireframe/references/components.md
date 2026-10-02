@@ -11,6 +11,7 @@ Every element also takes:
   - `height`: Height in px (most things size themselves).
   - `grow`: Take a share of leftover space along the stack (a spacer grows by default).
   - `note`: A designer's note. Shown as a numbered sticky beside the screen on the canvas, never on the screen itself.
+  - `at`: Place it freely at [x, y] on the screen, outside the stacks (top-level elements only). The editor writes this when a designer drags something in; agents should prefer stacks.
 
 ## Layout
 
@@ -33,7 +34,7 @@ Stacks children down (default) or across.
 
 ### `row`
 
-Children side by side, centred vertically. Fill-width children share the space.
+Children side by side, centered vertically. Fill-width children share the space.
 
   - `children`: What's inside, in order.
   - `gap`: Space between children (px).
@@ -143,7 +144,7 @@ A paragraph. Leave `text` out and set `lines` for placeholder squiggles.
 
 ### `label`
 
-Small grey text: captions, meta, helper text.
+Small gray text: captions, meta, helper text.
 
   - `text`: The words.
   - `align`: Text alignment. (`start`, `center`, `end`)
@@ -430,7 +431,7 @@ Images, lists, tables, charts and other placeholders.
 
 ### `image`
 
-An image placeholder (a crossed box). Give `src` to use a real picture; it's sketchified in greys.
+An image placeholder (a crossed box). Give `src` to use a real picture; it's sketchified in grays.
 
   - `label`: What the picture is.
   - `aspect`: Shape when there's no height: "16:9", "1:1", "4:3".
@@ -568,7 +569,7 @@ A bottom sheet over a dimmed screen. Pinned `bottom` by default. Runs edge to ed
 
 ### `dialog`
 
-A centred dialog over a dimmed screen. Pinned `center` by default.
+A centered dialog over a dimmed screen. Pinned `center` by default.
 
   - `children`: What's inside, in order.
   - `gap`: Space between children (px).
@@ -638,11 +639,11 @@ A loading spinner.
 
 ## Sketch
 
-A labelled box for anything not in the catalogue.
+A labeled box for anything not in the catalog.
 
 ### `sketch`
 
-A dashed, labelled box for anything the catalogue doesn't have. Say what it is.
+A dashed, labeled box for anything the catalog doesn't have. Say what it is.
 
   - `label`: What goes here, e.g. "pastry carousel".
 
@@ -656,4 +657,4 @@ A dashed, labelled box for anything the catalogue doesn't have. Say what it is.
 
 ## Devices
 
-`phone` (390×844), `tablet` (820×1180), `desktop` (1440×900), `watch` (198×242), or `{ "w": …, "h": … }`.
+`phone` (390×844), `phone-small` (375×667), `phone-large` (430×932), `tablet` (820×1180), `tablet-landscape` (1180×820), `laptop` (1280×800), `desktop` (1440×900), `watch` (198×242), or `{ "w": …, "h": … }`.

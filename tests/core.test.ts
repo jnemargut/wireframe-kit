@@ -14,6 +14,9 @@ import type { WireframeFile } from "../src/types";
 import { validate } from "../src/validate";
 import { COMPONENTS, TYPES } from "../src/vocab";
 import * as M from "../src/editor/model";
+import { hitChain, pickFrom } from "../src/editor/Canvas";
+import { bezelOf } from "../src/render/flow";
+import { STARTERS, starterOf } from "../src/vocab";
 
 const example = (): WireframeFile => JSON.parse(readFileSync("examples/order-ahead.wireframe.json", "utf8"));
 const one = (children: unknown[], extra: Partial<WireframeFile> = {}): WireframeFile => ({ title: "T", screens: { a: { children: children as never } }, ...extra });
@@ -21,7 +24,7 @@ const box = (f: WireframeFile, key: string, screen = "a") => layoutScreen(f, scr
 
 beforeAll(async () => { await initRenderer(); });
 
-describe("catalogue", () => {
+describe("catalog", () => {
   it("has about 50 components, each with a doc and an example that validates", () => {
     expect(TYPES.length).toBeGreaterThanOrEqual(50);
     for (const d of Object.values(COMPONENTS)) {
@@ -189,5 +192,61 @@ describe("editor model", () => {
     expect(M.insertTarget(f, { screen: "cart", key: "children/3" }, "menu")).toMatchObject({ index: 4 });
     const t = M.insertTarget(f, null, "menu");
     expect(t.index).toBe(f.screens.menu.children.length - 2);
+  });
+});
+
+describe("designer touches", () => {
+  it("places free elements at their spot, on top, outside the stacks", () => {
+    const f = one([{ type: "title", text: "Hi" }, { type: "button", text: "Free", at: [100, 300], width: 150 }, { type: "button", text: "Flow" }]);
+    const free = box(f, "children/1"), flow = box(f, "children/2");
+    expect([free.x, free.y, free.w]).toEqual([100, 300, 150]);
+    expect(free.free).toBe(true);
+    expect(flow.y).toBeLessThan(200);
+    expect(free.plane).toBeGreaterThan(flow.plane);
+  });
+  it("draws shapes and validates them", () => {
+    const f = one([{ type: "text", lines: 2 }]);
+    f.screens.a.shapes = [{ type: "ellipse", points: [[10, 10], [100, 60]], color: "red" }, { type: "text", points: [[50, 200]], text: "look" }];
+    expect(validate(f).errors).toEqual([]);
+    expect(screenSVG(f, "a")).toContain("look");
+    f.screens.a.shapes.push({ type: "circle", points: [[0, 0]] } as never);
+    expect(validate(f).errors.map((e) => e.hint).join()).toContain("rect");
+  });
+  it("gives any screen any size and a matching device body", () => {
+    const f = one([{ type: "text", lines: 2 }], { device: { w: 1280, h: 720 } });
+    const l = layoutScreen(f, "a");
+    expect([l.w, l.h]).toEqual([1280, 720]);
+    expect(bezelOf(l, f).kind).toBe("desktop");
+    f.screens.a.chrome = "none";
+    expect(bezelOf(layoutScreen(f, "a"), f).l).toBe(0);
+    expect(bezelOf(layoutScreen(example(), "menu"), example()).kind).toBe("phone");
+  });
+  it("selects the outer thing first, then drills in", () => {
+    const f = example();
+    const l = layoutScreen(f, "menu");
+    const item = l.items.find((it) => it.goes === "drink")!;
+    const chain = hitChain(l, item.x + 5, item.y + 5, f);
+    expect(chain[0]).toBe(l.boxes.find((b) => b.type === "list")!.key);
+    expect(chain[chain.length - 1]).toBe(item.key);
+    expect(pickFrom(chain, null, "menu", false)).toBe(chain[0]);
+    expect(pickFrom(chain, { screen: "menu", key: chain[0] }, "menu", false)).toBe(chain[1]);
+    expect(pickFrom(chain, null, "menu", true)).toBe(item.key);
+  });
+  it("slides screens along when one grows", () => {
+    const f = example();
+    f.canvas = { menu: [0, 0], drink: [600, 0], cart: [1200, 0], status: [1800, 0] };
+    const next = M.setAt(f, ["screens", "drink", "device"], { w: 990, h: 844 });
+    const w = (d: typeof f, id: string) => layoutScreen(d, id).w;
+    const out = M.keepClear(f, next, w);
+    expect(out.canvas!.cart[0]).toBe(1800);
+    expect(out.canvas!.menu[0]).toBe(0);
+  });
+  it("palette starters are neutral and valid", () => {
+    for (const t of TYPES) {
+      const n = starterOf(t);
+      expect(JSON.stringify(n)).not.toMatch(/latte|coffee|pastr/i);
+      expect(validate(one([n])).errors, t).toEqual([]);
+    }
+    expect(Object.keys(STARTERS).length).toBe(TYPES.length);
   });
 });

@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import type { Result } from "../../vendor/sketch/suggest";
 import type { ItemBox, Layout } from "../layout";
 import { resolveNode, startScreen, type Item, type WireframeFile, type WNode } from "../types";
-import { CATEGORIES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, type PropDef } from "../vocab";
+import { CATEGORIES, CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, type PropDef } from "../vocab";
+import { MARKER } from "../../vendor/sketch/tokens";
+import { Icon } from "../render/icons";
+import { COLORS } from "./Tools";
 import { getAt, keyOf, pathOf, type Sel } from "./model";
 
 export interface InspectorActions {
@@ -21,6 +24,9 @@ export interface InspectorActions {
   copyScreenImage: () => void;
   play: (screen?: string) => void;
   focusScreen: (id: string) => void;
+  setFree: (on: boolean) => void;
+  startEdit: () => void;
+  versionAs: (device: string) => void;
 }
 
 interface Props { doc: WireframeFile; layouts: Record<string, Layout>; sel: Sel; result?: Result; a: InspectorActions; focusText: number }
@@ -40,6 +46,25 @@ function TextIn({ value, onChange, multiline, placeholder, autoFocusKey, id }: {
   };
   useEffect(() => { if (autoFocusKey && id) (document.getElementById(id) as HTMLInputElement | null)?.select(); }, [autoFocusKey, id]);
   return multiline ? <textarea rows={3} {...props} /> : <input type="text" {...props} />;
+}
+
+/** Icons as a grid of pictures, not a list of names. */
+function IconPicker({ value, onChange, allowNone = true }: { value: string; onChange: (v: string | undefined) => void; allowNone?: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="icon-picker">
+      <button type="button" className="icon-current" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {value ? <svg viewBox="0 0 24 24" width={20} height={20}><Icon name={value} x={0} y={0} /></svg> : null}
+        <span>{value || "none"}</span>
+      </button>
+      {open ? (
+        <span className="icon-pop">
+          {allowNone ? <button type="button" className="none" onClick={() => { onChange(undefined); setOpen(false); }}>none</button> : null}
+          {ICONS.map((i) => <button type="button" key={i} title={i} className={i === value ? "on" : ""} onClick={() => { onChange(i); setOpen(false); }}><svg viewBox="0 0 24 24" width={20} height={20}><Icon name={i} x={0} y={0} /></svg></button>)}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function NumIn({ value, onChange, min, max, step }: { value: unknown; onChange: (v: number | undefined) => void; min?: number; max?: number; step?: number }) {
@@ -66,7 +91,7 @@ function ItemsEditor({ type, items, screens, onChange }: { type: string; items: 
         return (
           <div className="item-row" key={i}>
             {fields.map((f) => f === "icon"
-              ? <select key={f} value={String(o.icon ?? "")} onChange={(e) => set(i, "icon", e.target.value || undefined)} title="Icon"><option value="">{type === "navbar" ? "icon…" : "auto icon"}</option>{ICONS.map((ic) => <option key={ic}>{ic}</option>)}</select>
+              ? <IconPicker key={f} value={String(o.icon ?? "")} onChange={(v) => set(i, "icon", v)} allowNone={type !== "navbar"} />
               : <TextIn key={f} value={String(o[f] ?? "")} placeholder={f} onChange={(v) => set(i, f, v)} />)}
             {links ? <select value={String(o.goes ?? "")} onChange={(e) => set(i, "goes", e.target.value || undefined)} title="Goes to"><option value="">no link</option>{screens.map((s) => <option key={s} value={s}>→ {s}</option>)}<option value="back">← back</option></select> : null}
             <button className="x" title="Remove" onClick={() => onChange(items.filter((_, j) => j !== i))}>×</button>
@@ -89,7 +114,7 @@ function Field({ k, d, node, path, screens, a, focusText }: { k: string; d: Prop
     case "number": input = <NumIn value={v} min={t.min} max={t.max} onChange={set} />; break;
     case "bool": input = <input type="checkbox" checked={v === true} onChange={(e) => set(e.target.checked ? true : undefined)} />; break;
     case "enum": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">default</option>{t.values.map((x) => <option key={x}>{x}</option>)}</select>; break;
-    case "icon": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">none</option>{ICONS.map((x) => <option key={x}>{x}</option>)}</select>; break;
+    case "icon": input = <IconPicker value={v == null ? "" : String(v)} onChange={set} />; break;
     case "screen": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">no link</option>{screens.map((s) => <option key={s} value={s}>→ {s}</option>)}<option value="back">← back</option></select>; break;
     case "strings": input = <textarea rows={Math.max(2, Array.isArray(v) ? v.length : 1)} value={Array.isArray(v) ? v.join("\n") : v == null ? "" : String(v)} onChange={(e) => set(e.target.value.split("\n").filter((x, i, arr) => x || i < arr.length - 1))} placeholder="one per line" />; break;
     case "rows": input = <textarea rows={4} value={Array.isArray(v) ? (v as unknown[][]).map((r) => (Array.isArray(r) ? r.join(" | ") : String(r))).join("\n") : ""} onChange={(e) => set(e.target.value.split("\n").filter(Boolean).map((r) => r.split("|").map((c) => c.trim())))} placeholder="cell | cell | cell" />; break;
@@ -151,11 +176,7 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
         <label className="field"><span>Title</span><TextIn id="insp-text" autoFocusKey={focusText} value={sc.title ?? ""} onChange={(v) => a.setProp(["screens", sel.screen], "title", v, `${sel.screen}.title`)} /></label>
         <label className="field" title="Links and storyboards use this (file#id). Renaming updates every link."><span>Id</span><ScreenId id={sel.screen} onRename={(to) => a.renameScreen(sel.screen, to)} /></label>
         <label className="field inline"><span>Start screen</span><input type="checkbox" checked={startScreen(doc) === sel.screen} onChange={() => a.edit({ ...doc, start: sel.screen })} /></label>
-        <label className="field"><span>Device</span>
-          <select value={typeof sc.device === "string" ? sc.device : ""} onChange={(e) => a.setProp(["screens", sel.screen], "device", e.target.value || undefined)}>
-            <option value="">same as the flow</option>{Object.keys(DEVICES).map((k) => <option key={k}>{k}</option>)}
-          </select>
-        </label>
+        <ScreenSize doc={doc} screen={sel.screen} layouts={layouts} a={a} />
         <label className="field inline" title="Long pages grow to fit instead of clipping"><span>Scrolls (long page)</span><input type="checkbox" checked={sc.scroll === true} onChange={(e) => a.setProp(["screens", sel.screen], "scroll", e.target.checked || undefined)} /></label>
         <label className="field inline"><span>Side by side (sidebar layout)</span><input type="checkbox" checked={sc.dir === "right"} onChange={(e) => a.setProp(["screens", sel.screen], "dir", e.target.checked ? "right" : undefined)} /></label>
         <label className="field"><span>Note</span><TextIn multiline value={sc.note ?? ""} onChange={(v) => a.setProp(["screens", sel.screen], "note", v, `${sel.screen}.note`)} /></label>
@@ -169,6 +190,8 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
       </aside>
     );
   }
+
+  if (sel.key.startsWith("shape:")) return <ShapePanel doc={doc} screen={sel.screen} index={Number(sel.key.slice(6))} a={a} />;
 
   const l = layouts[sel.screen];
   const isItem = sel.key.includes("#");
@@ -189,6 +212,7 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
     if (pn) crumbs.push({ key: k, label: String(pn.type ?? pn.use) });
   }
   const nudged = typeof raw.id === "string" && doc.layout?.[sel.screen]?.[raw.id];
+  const box = l?.boxes.find((b) => b.key === nodeKey);
   const own = Object.entries(def?.props ?? {}).filter(([k]) => k !== "children");
   const commonKeys = ["goes", "pin", "width", "height", "grow", "id", "note"];
 
@@ -207,6 +231,15 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
       ) : (
         <>
           {own.map(([k, d]) => <Field key={k} k={k} d={d} node={raw.use ? { ...node, ...raw } : raw} path={path} screens={screens} a={a} focusText={focusText} />)}
+          <h4>Position</h4>
+          <label className="field inline" title="Take it out of the stacks and put it anywhere"><span>Float freely</span><input type="checkbox" checked={Array.isArray(raw.at)} onChange={(e) => a.setFree(e.target.checked)} /></label>
+          {Array.isArray(raw.at) ? (
+            <div className="xywh">
+              {(["x", "y"] as const).map((c, ci) => <label key={c}><span>{c.toUpperCase()}</span><input type="number" value={(raw.at as number[])[ci]} onChange={(e) => a.setProp(path, "at", ci ? [(raw.at as number[])[0], Number(e.target.value)] : [Number(e.target.value), (raw.at as number[])[1]], `${path.join(".")}.at`)} /></label>)}
+              {(["width", "height"] as const).map((c) => <label key={c}><span>{c === "width" ? "W" : "H"}</span><input type="number" value={typeof raw[c] === "number" ? (raw[c] as number) : Math.round((c === "width" ? box?.w : box?.h) ?? 0)} onChange={(e) => a.setProp(path, c, Number(e.target.value), `${path.join(".")}.${c}`)} /></label>)}
+            </div>
+          ) : null}
+          <p className="hint">{Array.isArray(raw.at) ? "Drag it anywhere; pull the handles to resize." : "In the layout: drag to nudge, pull the right or bottom edge to resize."} Double-click or press Enter to edit its words in place.</p>
           <h4>Link and layout</h4>
           {commonKeys.map((k) => <Field key={k} k={k} d={k === "width" ? { type: { kind: "enum", values: ["fill", "hug"] }, doc: COMMON.width.doc } : k === "pin" ? { type: { kind: "enum", values: PINS }, doc: COMMON.pin.doc } : COMMON[k]} node={raw} path={path} screens={screens} a={a} focusText={focusText} />)}
           {typeof raw.width === "number" ? <p className="hint">Width is {raw.width}px.</p> : null}
@@ -243,4 +276,75 @@ function ScreenId({ id, onRename }: { id: string; onRename: (to: string) => void
   useEffect(() => setV(id), [id]);
   const done = () => { const to = v.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, ""); if (to && to !== id) onRename(to); else setV(id); };
   return <input type="text" value={v} onChange={(e) => setV(e.target.value)} onBlur={done} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />;
+}
+
+const SHAPE_NAME: Record<string, string> = { rect: "Box", ellipse: "Oval", line: "Line", arrow: "Arrow", path: "Drawing", text: "Text" };
+
+function ShapePanel({ doc, screen, index, a }: { doc: WireframeFile; screen: string; index: number; a: InspectorActions }) {
+  const sh = doc.screens[screen]?.shapes?.[index];
+  if (!sh) return <aside className="inspector" />;
+  const path = ["screens", screen, "shapes", index];
+  return (
+    <aside className="inspector">
+      <div className="crumbs"><button onClick={() => a.select({ screen, key: "" })}>{doc.screens[screen].title ?? screen}</button></div>
+      <h3>{SHAPE_NAME[sh.type] ?? "Drawing"}<small> Drawing</small></h3>
+      <p className="doc">Your own marks on the screen, for anything the components don't cover.</p>
+      <div className="field"><span>Color</span>
+        <span className="swatches">{COLORS.map((c) => <button key={c} title={c} aria-label={c} className={(sh.color ?? "ink") === c ? "on" : ""} onClick={() => a.setProp(path, "color", c === "ink" ? undefined : c)}><span className="dot" style={{ background: MARKER[c] }} /></button>)}</span>
+      </div>
+      {sh.type === "rect" || sh.type === "ellipse" || sh.type === "path" ? (
+        <label className="field"><span>Fill</span>
+          <select value={sh.fill ?? "none"} onChange={(e) => a.setProp(path, "fill", e.target.value === "none" ? undefined : e.target.value)}>
+            {["none", "light", "mid", "dark"].map((f) => <option key={f}>{f}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {sh.type === "text" ? <label className="field"><span>Text</span><TextIn multiline value={sh.text ?? ""} onChange={(v) => a.setProp(path, "text", v, `${path.join(".")}.text`)} /></label> : null}
+      <div className="actions">
+        <button className="btn" onClick={a.duplicate}>Duplicate</button>
+        <button className="btn danger" onClick={a.remove}>Delete</button>
+      </div>
+      <p className="hint">Drag to move, pull a corner to resize. Arrow keys nudge.</p>
+    </aside>
+  );
+}
+
+const QUICK: [string, string][] = [["phone", "Phone"], ["tablet", "Tablet"], ["laptop", "Laptop"], ["desktop", "Desktop"], ["watch", "Watch"]];
+
+/** Any size for any screen: presets, or type a width and height (or drag the screen's corner on the canvas). */
+function ScreenSize({ doc, screen, layouts, a }: { doc: WireframeFile; screen: string; layouts: Record<string, Layout>; a: InspectorActions }) {
+  const sc = doc.screens[screen];
+  const l = layouts[screen];
+  const custom = typeof sc.device === "object";
+  const set = (v: unknown) => a.setProp(["screens", screen], "device", v);
+  return (
+    <>
+      <div className="field"><span>Device</span>
+        <span className="quick">{QUICK.map(([k, label]) => <button key={k} className={(typeof sc.device === "string" ? sc.device : "") === k ? "on" : ""} onClick={() => set(k)} title={`${DEVICES[k as keyof typeof DEVICES].w}×${DEVICES[k as keyof typeof DEVICES].h}`}>{label}</button>)}</span>
+      </div>
+      <div className="field"><span>Make a version for</span>
+        <span className="quick">{QUICK.map(([k, label]) => <button key={k} onClick={() => a.versionAs(k)} title={`Copy this screen as a ${label.toLowerCase()} screen, placed under it`}>{label}</button>)}</span>
+      </div>
+      <label className="field"><span>Size</span>
+        <select value={custom ? "custom" : typeof sc.device === "string" ? sc.device : ""} onChange={(e) => set(e.target.value === "custom" ? { w: l?.w ?? 390, h: l?.h ?? 844 } : e.target.value || undefined)}>
+          <option value="">same as the flow</option>
+          {Object.entries(DEVICES).map(([k, d]) => <option key={k} value={k}>{d.label} ({d.w}×{d.h})</option>)}
+          <option value="custom">Custom size…</option>
+        </select>
+      </label>
+      {custom ? (
+        <div className="xywh">
+          <label><span>W</span><input type="number" min={80} value={(sc.device as { w: number }).w} onChange={(e) => set({ ...(sc.device as object), w: Number(e.target.value) })} /></label>
+          <label><span>H</span><input type="number" min={80} value={(sc.device as { h: number }).h} onChange={(e) => set({ ...(sc.device as object), h: Number(e.target.value) })} /></label>
+        </div>
+      ) : null}
+      <label className="field"><span>Body</span>
+        <select value={sc.chrome ?? ""} onChange={(e) => a.setProp(["screens", screen], "chrome", e.target.value || undefined)}>
+          <option value="">match the size</option>
+          {CHROMES.map((c) => <option key={c} value={c}>{c === "none" ? "no body" : c}</option>)}
+        </select>
+      </label>
+      <p className="hint">Mix sizes freely: every screen can be its own device. "Make a version" copies this screen as another device, right under it; ask your agent to adapt the layout. You can also drag the screen's corner on the canvas.</p>
+    </>
+  );
 }

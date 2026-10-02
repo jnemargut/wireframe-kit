@@ -1,5 +1,5 @@
-/** JSON Schema for *.wireframe.json, generated from the catalogue (editors get autocomplete; the validator is stricter). */
-import { COMMON, COMPONENTS, DEVICES, ICONS, PINS, TYPES, type PropDef } from "./vocab";
+/** JSON Schema for *.wireframe.json, generated from the catalog (editors get autocomplete; the validator is stricter). */
+import { CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, TYPES, type PropDef } from "./vocab";
 
 function propSchema(p: PropDef): Record<string, unknown> {
   const t = p.type;
@@ -15,6 +15,7 @@ function propSchema(p: PropDef): Record<string, unknown> {
     case "rows": return { ...base, type: "array", items: { type: "array", items: { type: ["string", "number"] } } };
     case "items": return { ...base, type: "array", items: { oneOf: [{ type: ["string", "number"] }, { $ref: "#/definitions/item" }] } };
     case "children": return { ...base, type: "array", items: { $ref: "#/definitions/node" } };
+    case "point": return { ...base, type: "array", items: { type: "number" }, minItems: 2, maxItems: 2 };
   }
 }
 
@@ -51,6 +52,10 @@ export function buildSchema() {
           title: { type: "string" }, dir: { enum: ["down", "right"] }, gap: { type: "number" }, pad: { type: "number" },
           align: { enum: ["start", "center", "end", "stretch"] }, scroll: { type: "boolean" }, statusbar: { type: "boolean" },
           device, note: { type: "string" }, children: { type: "array", items: { $ref: "#/definitions/node" } },
+          chrome: { enum: [...CHROMES] },
+          versionOf: { type: "string", description: "This screen is another device's version of that screen." },
+          shapes: { type: "array", description: "Designer drawings (editor-owned).", items: { type: "object", required: ["type", "points"], properties: { type: { enum: ["rect", "ellipse", "line", "arrow", "path", "text"] }, points: { type: "array" }, text: { type: "string" }, color: { type: "string" }, fill: { type: "string" }, id: { type: "string" } } } },
+          markup: { type: "array", description: "Play-mode sharpie marks (editor-owned).", items: { type: "object" } },
         },
       },
       node: { type: "object", anyOf: [{ required: ["type"] }, { required: ["use"] }], additionalProperties: false, properties: props },

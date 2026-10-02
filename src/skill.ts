@@ -11,9 +11,9 @@ description: Draft low-fi, marker-style wireframes and clickable flows (app or w
 # Wireframes, built by your agent
 
 You turn a designer's loose description ("the order-ahead flow: menu, cart, pay, order status") into a
-\`*.wireframe.json\` file: a few screens built from a closed catalogue of about 50 components, linked together.
+\`*.wireframe.json\` file: a few screens built from a closed catalog of about 50 components, linked together.
 The tool validates it and opens a canvas where the designer sees the whole flow, tweaks things, and clicks
-through it. Everything is drawn in greys, in a hand-drawn marker style, so nobody mistakes it for a final design.
+through it. Everything is drawn in grays, in a hand-drawn marker style, so nobody mistakes it for a final design.
 
 ## Running the tool
 
@@ -30,7 +30,7 @@ path. **Below, \`${CLI}\` is short for that whole command.**
 
 1. **Look up the components. Don't guess.** \`${CLI} vocab\` lists every component by category,
    \`${CLI} vocab <component>\` shows its props and an example, \`${CLI} vocab icons\` lists icon names, and
-   \`${CLI} vocab --grep cart\` searches. If something isn't in the catalogue, use a labelled
+   \`${CLI} vocab --grep cart\` searches. If something isn't in the catalog, use a labeled
    \`{ "type": "sketch", "label": "pastry carousel" }\` box rather than inventing a type.
    Full list: [references/components.md](references/components.md).
 2. **Write the file**: \`<name>.wireframe.json\` (\`${CLI} new <file>\` makes a starter). Shape:
@@ -43,7 +43,9 @@ path. **Below, \`${CLI}\` is short for that whole command.**
 5. **Look at what you made.** \`${CLI} export <file> --png\` renders the whole flow to one image. Read it and fix
    anything cramped, cut off or confusing before you say you're done.
 6. **Iterate on the same file.** Re-read it before each edit, because the designer may have changed things.
-   Never delete or rewrite \`layout\` (the designer's nudges) or \`canvas\` (where screens sit) unless asked.
+   The designer's own touches are theirs: \`layout\` (nudges), \`canvas\` (where screens sit), \`at\` (things they
+   dragged in and placed freely), and a screen's \`shapes\` (their drawings) and \`markup\` (play-mode sharpie).
+   Keep them unless asked. You can read them, though: a red circle or a scribbled note is often feedback for you.
 7. **The designer may paste a pointer** like \`In order.wireframe.json, screen "cart", button "Pay" (screens.cart.children[7])\`.
    That's exactly the element to change.
 8. **For a storyboard** (Storyboard Kit): \`${CLI} render <file>\` writes \`<name>.<screen>.png\` next to the file,
@@ -68,10 +70,13 @@ path. **Below, \`${CLI}\` is short for that whole command.**
   \`{ "use": "tabs", "active": "Orders" }\`. Arrows aren't drawn for shared navigation, so the canvas stays readable.
 - **Say why with notes.** \`"note": "Pastries sell out by 10"\` puts a numbered sticky beside the screen; the
   screen itself stays clean.
-- **Pick the device.** \`"device": "phone"\` (default), \`"tablet"\`, \`"desktop"\` (web, with a browser frame), or
-  \`{ "w": 1280, "h": 800 }\`. Long web pages: \`"scroll": true\` on the screen. A desktop app layout:
+- **Pick the device.** \`"device": "phone"\` (default), \`"phone-small"\`, \`"phone-large"\`, \`"tablet"\`,
+  \`"tablet-landscape"\`, \`"laptop"\`, \`"desktop"\`, \`"watch"\`, or any size \`{ "w": 1280, "h": 800 }\`. Screens can
+  mix sizes: set \`device\` on a screen to override the file's. To show the same screen on another device, add a
+  screen with that \`device\` and \`"versionOf": "<original id>"\`, and adapt its layout (a phone list becomes a desktop
+  grid, a tab bar becomes a top nav). Long web pages: \`"scroll": true\` on the screen. A desktop app layout:
   \`"dir": "right"\` on the screen with a \`sidebar\` first and a \`stack\` for the main column.
-- **Stay low-fi.** Greys only; there are no colour or font options on purpose. Images are crossed boxes with a
+- **Stay low-fi.** Grays only; there are no color or font options on purpose. Images are crossed boxes with a
   label unless the designer gives you a picture (\`"src"\`), which gets sketchified to match.
 - 3 to 10 screens per file. One file per flow.
 `;
@@ -131,7 +136,7 @@ desktop), \`align\`, \`scroll\` (long pages grow to fit), \`statusbar\` (default
 **Layout** is stacks, never coordinates:
 - Children stack down. Most things fill the width; small things (labels, badges, icons) hug their content.
   \`"width": "hug"\`, \`"fill"\` or a number overrides it.
-- \`row\` puts children side by side, centred; fill-width children share the space, so two buttons split it.
+- \`row\` puts children side by side, centered; fill-width children share the space, so two buttons split it.
   \`"justify": "between"\` pushes them apart (a heading and a price).
 - \`card\` is a bordered box; \`section\` adds a small heading; \`grid\` makes columns.
 - \`spacer\` without a height grows, pushing what follows to the bottom of the screen. \`"grow": 1\` on any
@@ -145,6 +150,13 @@ desktop), \`align\`, \`scroll\` (long pages grow to fit), \`statusbar\` (default
 \`chips\`, \`sidebar\`, \`topnav\`, \`breadcrumbs\`, navbar \`actions\`) written as objects:
 \`{ "text": "Orders", "goes": "status" }\`. \`"goes": "back"\` returns to the previous screen in Play mode.
 \`navbar\` with \`"back": true\` goes back on its own.
+
+**Free placement** is for the designer: dragging something in from the editor writes \`"at": [x, y]\` (screen px)
+plus a \`width\`, taking it out of the stacks. Prefer stacks yourself; leave \`at\` where the designer put it.
+
+**Drawings and markup** live on a screen: \`"shapes"\` (boxes, ovals, lines, arrows, freehand paths and free text,
+\`{ "type": "rect", "points": [[x1, y1], [x2, y2]], "color": "red" }\`) and \`"markup"\` (sharpie strokes from play mode,
+shown only there). \`"chrome"\` picks the device body: \`phone\`, \`tablet\`, \`watch\`, \`laptop\`, \`desktop\`, \`plain\` or \`none\`.
 
 **Ids** (\`"id": "pay"\`) are optional. Give one to anything you'll talk about, link from or that the designer
 nudges; the editor adds them when it needs to.
@@ -162,8 +174,8 @@ ${exampleJson.trim()}
 
 Why it works: every screen has one primary action, the words are real, every way forward is linked with
 \`goes\` (so the canvas shows the flow and Play clicks through it), the tab bar is defined once in \`shared\`,
-layout is stacks plus one pinned cart button and a spacer, the pastry carousel the catalogue doesn't have is a
-labelled sketch box, and the "why" lives in notes instead of on the screens.
+layout is stacks plus one pinned cart button and a spacer, the pastry carousel the catalog doesn't have is a
+labeled sketch box, and the "why" lives in notes instead of on the screens.
 
 In a storyboard: \`wf render order-ahead.wireframe.json\`, then a panel's device can use
 \`"screen": "./order-ahead.wireframe.json#status"\`.

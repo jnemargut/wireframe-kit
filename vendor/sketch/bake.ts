@@ -23,13 +23,13 @@ export function imageSize(buf: Buffer): { w: number; h: number } | undefined {
 
 /**
  * "Sketchify": grayscale → 4 tones → faint ink edges → slight wobble.
- * Teal for the product's screens; greys (ink → paper) for any other image, matching the marker style.
+ * Teal for the product's screens; grays (ink → paper) for any other image, matching the marker style.
  */
 export type BakeMode = "teal" | "grey" | "wire";
 const TONES: Record<BakeMode, [string, string, string]> = {
   teal: ["0.11 0.05 0.56 0.98", "0.11 0.60 0.84 0.98", "0.12 0.65 0.86 0.97"],
   grey: ["0.11 0.45 0.76 0.98", "0.11 0.48 0.78 0.98", "0.12 0.51 0.80 0.97"],
-  /** Low-fi wireframes are mostly paper, light greys and ink: a smooth ramp (paper → light teal, greys → teal tints, ink → deep teal) keeps every grey distinct. */
+  /** Low-fi wireframes are mostly paper, light grays and ink: a smooth ramp (paper → light teal, grays → teal tints, ink → deep teal) keeps every gray distinct. */
   wire: [
     "0.043 0.044 0.046 0.047 0.048 0.050 0.051 0.052 0.054 0.055 0.139 0.224 0.308 0.392 0.477 0.561 0.607 0.654 0.700 0.801 0.902",
     "0.310 0.343 0.375 0.408 0.441 0.473 0.506 0.539 0.571 0.604 0.643 0.682 0.721 0.761 0.800 0.839 0.856 0.873 0.890 0.925 0.961",

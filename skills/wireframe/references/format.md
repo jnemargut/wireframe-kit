@@ -34,7 +34,7 @@ desktop), `align`, `scroll` (long pages grow to fit), `statusbar` (default on fo
 **Layout** is stacks, never coordinates:
 - Children stack down. Most things fill the width; small things (labels, badges, icons) hug their content.
   `"width": "hug"`, `"fill"` or a number overrides it.
-- `row` puts children side by side, centred; fill-width children share the space, so two buttons split it.
+- `row` puts children side by side, centered; fill-width children share the space, so two buttons split it.
   `"justify": "between"` pushes them apart (a heading and a price).
 - `card` is a bordered box; `section` adds a small heading; `grid` makes columns.
 - `spacer` without a height grows, pushing what follows to the bottom of the screen. `"grow": 1` on any
@@ -48,6 +48,13 @@ desktop), `align`, `scroll` (long pages grow to fit), `statusbar` (default on fo
 `chips`, `sidebar`, `topnav`, `breadcrumbs`, navbar `actions`) written as objects:
 `{ "text": "Orders", "goes": "status" }`. `"goes": "back"` returns to the previous screen in Play mode.
 `navbar` with `"back": true` goes back on its own.
+
+**Free placement** is for the designer: dragging something in from the editor writes `"at": [x, y]` (screen px)
+plus a `width`, taking it out of the stacks. Prefer stacks yourself; leave `at` where the designer put it.
+
+**Drawings and markup** live on a screen: `"shapes"` (boxes, ovals, lines, arrows, freehand paths and free text,
+`{ "type": "rect", "points": [[x1, y1], [x2, y2]], "color": "red" }`) and `"markup"` (sharpie strokes from play mode,
+shown only there). `"chrome"` picks the device body: `phone`, `tablet`, `watch`, `laptop`, `desktop`, `plain` or `none`.
 
 **Ids** (`"id": "pay"`) are optional. Give one to anything you'll talk about, link from or that the designer
 nudges; the editor adds them when it needs to.

@@ -6,19 +6,19 @@ You tell Claude Code (or Codex) the flow you have in mind. It sketches every scr
 a canvas where you see the whole thing at once. You poke at it, click through it like the real app, and hand
 it to your team before anyone starts arguing about pixels.
 
-![Wireframe Kit sizzle reel](docs/sizzle-a97aef3.gif)
+![Wireframe Kit sizzle reel](docs/sizzle-c40a19b.gif)
 
 ## Why though
 
 Early on, the question is "does this flow make sense?", not "is this the right shade of blue?" Wireframes that
 look finished get feedback about fonts. Wireframes that look like marker on paper get feedback about the idea.
 
-So everything here is drawn in greys with a wobbly marker line. No colours, no font pickers, no way to
+So everything here is drawn in grays with a wobbly marker line. No colors, no font pickers, no way to
 accidentally make it pretty. Your agent does the boring part (laying out forms, lists, tab bars, the empty
 state you forgot) and you spend your time on the part that matters: is this the right thing, in the right
 order, for the person using it?
 
-![The order-ahead flow on one sheet](docs/flow-1dbfdc1.png)
+![The order-ahead flow on one sheet](docs/flow-f16a665.png)
 
 Every screen sits on one canvas with arrows for where each button goes, so you see the shape of the flow at
 a glance: the dead ends, the screens nothing links to, the unhappy path you haven't drawn yet.
@@ -75,43 +75,69 @@ Or just click around yourself. Your edits and the agent's edits land in the same
 
 ## What's in the box
 
-![About 50 components](docs/components-13541f1.png)
+![About 50 components](docs/components-df8b153.png)
 
 - **About 50 components.** Navbars, tab bars, sidebars and site headers. Buttons, inputs, selects, checkboxes,
   toggles, sliders, steppers and chips. Lists, tables, cards, images, avatars, charts, maps and video. Alerts,
   toasts, progress, steps, bottom sheets and dialogs. Plus 55 little icons.
-- **A sketch box for everything else.** A dashed box with a label ("pastry carousel") for the bits that are
-  yours alone. The checker nudges your agent if a screen is mostly sketch boxes.
+- **A sketch box for everything else.** A dashed box with a label for the bits that are yours alone. The checker
+  nudges your agent if a screen is mostly sketch boxes.
 - **Real flows.** Buttons, list rows, tabs and menu items link to other screens. Shared pieces like the tab bar
   are defined once and reused everywhere.
-- **Layout that just works.** Things stack down the screen, sit side by side in rows, or float in a corner
-  (that floating cart button). Your agent never writes coordinates, so nothing ends up 3 pixels off.
-- **Any device.** Phone, tablet, a desktop app with a sidebar, or a long scrolling website.
+- **Layout that just works.** Your agent stacks things down the screen, puts them side by side in rows, or
+  floats them in a corner. It never writes coordinates, so nothing ends up 3 pixels off.
 - **Notes.** Little numbered stickies beside a screen for the "why", so the screen itself stays clean.
-- **Any picture at all.** Drop in a photo and it gets sketchified in greys to match.
+- **Any picture at all.** Drop in a photo and it gets sketchified in grays to match.
 
-![Desktop apps and websites too](docs/web-759f636.png)
+### Any size, side by side
+
+![The same menu on a phone, a desktop and a watch](docs/every-size-33408c3.png)
+
+Phones, tablets, laptops, desktop apps, long scrolling websites, watches, or any width and height you type in.
+Every screen can be its own device, so the phone checkout can sit right next to the desktop one. Pick a screen
+and hit **Make a version for: Desktop** to copy it as a desktop screen under the original, then ask your agent
+to adapt the layout. The devices are drawn in the same marker style as Storyboard Kit's.
 
 ## The editor bits
 
-**The canvas**
+Your agent likes structure. You probably like poking at things. The editor gives you both: everything the agent
+builds stays in tidy stacks, and anything you drag in lands exactly where you drop it.
 
-- Every screen in a device frame, side by side, with arrows for every link. Drag a screen's title to move it.
-- Scroll to pan, pinch (or Cmd+scroll) to zoom, Cmd+0 to fit everything.
+![The editor: real component previews, drawing tools and a selected doodle](docs/editor-1287dd4.png)
 
-**Editing**
+**Building**
 
-- Click anything to select it and edit its words, links and settings on the right. Press Enter to jump to its text.
-- Drag to nudge things around. Arrow keys nudge too (Shift for bigger steps).
-- Grab more from the component palette on the left. It lands after whatever you've selected, or inside it if it's a card or a section.
+- Every component in the palette is a real little preview. Click one to add it to the layout, or drag it onto a
+  screen to place it anywhere. Same for the icons.
+- Double-click anything to change its words right there on the canvas.
+- Drag to move. Pull the handles to resize. Things you placed freely move and resize any way you like; things in
+  the layout get nudged and stretched. Flip **Float freely** to pull anything out of the layout (or put it back).
+- Click once to pick the outer thing (a whole list), again to go one level in (one row). Cmd+click goes straight
+  to the innermost thing, and Esc steps back out.
+
+**Drawing**
+
+- A pen, boxes, ovals, lines, arrows and free text in six marker colors, for anything the components don't cover
+  or a quick "look here". Shortcuts: V, D, R, O, L, A, T.
+
+**Everything else**
+
+- Every screen side by side, with arrows for every link. Drag a screen's title to move it, or its corner to
+  resize it. Scroll to pan, pinch (or Cmd+scroll) to zoom, Cmd+0 to fit everything.
 - Cmd+C / Cmd+V / Cmd+D copy, paste and duplicate. Alt+↑ / Alt+↓ move things up and down. Delete deletes, Cmd+Z undoes.
 - Rename a screen and every link to it follows along.
 - **Copy for agent** copies a pointer to whatever you clicked, so you can tell your agent "make this a toggle instead."
 
 **Play mode**
 
+![Play mode with sharpie marks and the screens strip](docs/play-a152a53.png)
+
 Hit **Play** (or P) and click through the flow like the real app, with a big pointer the room can follow.
-Links glow orange when you hover, and Back, ← or the navbar arrow take you back.
+Links glow orange when you hover; Back, ← or the navbar arrow take you back.
+
+- **S** shows every screen in a strip, so you can jump anywhere, linked or not.
+- **D** grabs the sharpie (tap the dot to change color), **E** the eraser. Clear one screen or all of them.
+  Marks are saved with the file but only show up in play mode.
 
 **Export**
 
@@ -144,7 +170,7 @@ npm test          # unit tests: layout, every component, the checker, PNG round 
 npm run e2e       # clicks around the real editor in Chrome
 ```
 
-`src/vocab.ts` is the single source of truth for the component catalogue. The schema, the checker, the docs and
+`src/vocab.ts` is the single source of truth for the component catalog. The schema, the checker, the docs and
 the editor's palette all read from it. `skills/wireframe/` is generated from `src/`, and it's checked in so
 you can install straight from a clone.
 

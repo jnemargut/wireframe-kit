@@ -5,6 +5,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { C } from "../../vendor/sketch/tokens";
 import { WobbleFilter } from "../../vendor/sketch/wobble";
+import { chromeInsets, DeviceChrome, type ChromeKind } from "../../vendor/sketch/device-chrome";
 import { layoutScreen, linksOf, type Layout, type Rect } from "../layout";
 import { wrap } from "../text";
 import { deviceSize, type WireframeFile } from "../types";
@@ -13,13 +14,12 @@ import { ScreenArt, type ScreenOpts } from "./screen";
 export const GAP_X = 170;
 export const TITLE_H = 64;
 
-export function bezelOf(l: Layout, file: WireframeFile): { l: number; t: number; r: number; b: number; rx: number; browser?: boolean } {
-  const d = deviceSize(file, file.screens[l.screen]);
-  if (d.name === "desktop" || (d.name === "custom" && d.w >= 900)) return { l: 2, t: 40, r: 2, b: 2, rx: 10, browser: true };
-  if (d.name === "tablet") return { l: 18, t: 18, r: 18, b: 18, rx: 34 };
-  if (d.name === "watch") return { l: 14, t: 14, r: 14, b: 14, rx: 52 };
-  if (l.phone) return { l: 12, t: 12, r: 12, b: 12, rx: 58 };
-  return { l: 10, t: 10, r: 10, b: 10, rx: 16 };
+/** How far a screen's device body (and its stand or base) reaches past the screen, plus how to round the screen. */
+export function bezelOf(l: Layout, file: WireframeFile): { l: number; t: number; r: number; b: number; rx: number; screenRx: number; kind: ChromeKind | "none" } {
+  const kind = deviceSize(file, file.screens[l.screen]).chrome;
+  if (kind === "none") return { l: 0, t: 0, r: 0, b: 0, rx: 0, screenRx: 0, kind };
+  const i = chromeInsets(kind);
+  return { l: i.l + i.side, t: i.t + (kind === "watch" ? i.below : 0), r: i.r + i.side, b: i.b + i.below, rx: i.rx, screenRx: i.screenRx, kind };
 }
 
 /** Where each screen's top-left sits on the canvas. Saved positions win; the rest line up left to right. */
@@ -97,13 +97,12 @@ export const laneSpace = (arr: Arrow[]) => {
 
 export function Frame({ l, file, x, y, title, sub }: { l: Layout; file: WireframeFile; x: number; y: number; title?: string; sub?: string }) {
   const bz = bezelOf(l, file);
-  const fx = x - bz.l, fy = y - bz.t, fw = l.w + bz.l + bz.r, fh = l.h + bz.t + bz.b;
+  const fx = x - bz.l, fy = y - bz.t;
   return (
     <g>
       {title ? <text x={fx} y={fy - 28} fontFamily="Permanent Marker" fontSize={24} fill={C.ink}>{title}</text> : null}
       {sub ? <text x={fx} y={fy - 10} fontFamily="Patrick Hand" fontSize={15} fill={C.g7}>{sub}</text> : null}
-      <rect x={fx} y={fy} width={fw} height={fh} rx={bz.rx} fill={bz.browser ? C.g1 : C.ink} stroke={C.ink} strokeWidth={2.6} />
-      {bz.browser ? <g>{[0, 1, 2].map((i) => <circle key={i} cx={fx + 20 + i * 18} cy={fy + 20} r={5.5} fill="none" stroke={C.g7} strokeWidth={1.6} />)}<rect x={fx + 90} y={fy + 9} width={Math.min(420, fw - 180)} height={22} rx={11} fill={C.paper} stroke={C.g5} strokeWidth={1.4} /></g> : null}
+      {bz.kind !== "none" ? <DeviceChrome kind={bz.kind} x={x} y={y} w={l.w} h={l.h} /> : null}
     </g>
   );
 }
@@ -176,7 +175,7 @@ export function FlowArt({ file, opts = {}, highlight }: { file: WireframeFile; o
         const [x, y] = pos[id];
         return <g key={id}>
           <Frame l={l} file={file} x={x} y={y} title={file.screens[id].title ?? id} sub={file.screens[id].title ? id : undefined} />
-          <g transform={`translate(${x} ${y})`}><ScreenArt layout={l} opts={{ ...opts, uid: `wf-${id.replace(/[^a-z0-9]/gi, "_")}` }} /></g>
+          <g transform={`translate(${x} ${y})`}><ScreenArt layout={l} opts={{ ...opts, rx: bezelOf(l, file).screenRx, uid: `wf-${id.replace(/[^a-z0-9]/gi, "_")}` }} shapes={file.screens[id].shapes} /></g>
           <Notes l={l} file={file} x={x} y={y} below={below} />
         </g>;
       })}

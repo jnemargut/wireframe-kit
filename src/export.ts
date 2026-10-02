@@ -17,7 +17,7 @@ export const stemOf = (file: string) => basename(file).replace(/\.wireframe\.jso
 /** Where a screen's PNG goes: next to the file, "<name>.<screen>.png" (what Storyboard Kit looks for). */
 export const screenPNGPath = (file: string, screen: string) => join(dirname(resolve(file)), `${stemOf(file)}.${screen}.png`);
 
-/** Image `src` paths become sketchified (grey) data URIs. */
+/** Image `src` paths become sketchified (gray) data URIs. */
 export function assetResolver(file: string) {
   const base = dirname(resolve(file));
   const memo = new Map<string, string | undefined>();

@@ -26,7 +26,7 @@ const fontOf = (face: Face) => (face === "title" ? "Permanent Marker" : "Patrick
 function T({ x, y, text, size, face = "hand", fill = ink, anchor = "start", underline }: { x: number; y: number; text: string; size: number; face?: Face; fill?: string; anchor?: "start" | "middle" | "end"; underline?: boolean }) {
   return <text x={x} y={y} fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor} textDecoration={underline ? "underline" : undefined}>{text}</text>;
 }
-/** Single line, vertically centred in (y, h). */
+/** Single line, vertically centered in (y, h). */
 const mid1 = (y: number, h: number, size: number) => y + h / 2 + size * 0.34;
 
 function Para({ x, y, w, text, size, face = "hand", fill = ink, align = "start", maxLines }: { x: number; y: number; w: number; text: string; size: number; face?: Face; fill?: string; align?: string; maxLines?: number }) {
@@ -463,10 +463,10 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
       };
     }
     case "sketch": {
-      const label = n.type && n.type !== "sketch" ? `${n.type}?` : s(n.label) || "sketch";
+      const label = n.type && n.type !== "sketch" ? `${n.type}?` : s(n.label);
       return {
         shape: R(x, y, w, h, { rx: 8, stroke: C.g5, sw: 2, dash: "8 6" }),
-        words: <Para x={x + 10} y={y + h / 2 - lineH(15) * Math.min(3, wrap(label, "hand", 15, w - 20).length) / 2} w={w - 20} text={label} size={15} fill={muted} align="center" maxLines={3} />,
+        words: label ? <Para x={x + 10} y={y + h / 2 - lineH(15) * Math.min(3, wrap(label, "hand", 15, w - 20).length) / 2} w={w - 20} text={label} size={15} fill={muted} align="center" maxLines={3} /> : undefined,
       };
     }
 

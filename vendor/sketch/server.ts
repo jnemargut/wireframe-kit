@@ -55,11 +55,16 @@ export function eventHub() {
 
 /** Listen on `port`, or the next free one (up to +20). */
 export const listenFree = (server: Server, port: number) => new Promise<number>((ok, fail) => {
-  const tryPort = (n: number) => {
-    server.once("error", (err: NodeJS.ErrnoException) => (err.code === "EADDRINUSE" && n < port + 20 ? tryPort(n + 1) : fail(err)));
-    server.listen(n, "127.0.0.1", () => ok(n));
+  const onError = (err: NodeJS.ErrnoException) => {
+    const tried = Number((err as { port?: number }).port ?? port);
+    if (err.code === "EADDRINUSE" && tried < port + 20) server.listen(tried + 1, "127.0.0.1");
+    else { server.off("listening", onListening); fail(err); }
   };
-  tryPort(port);
+  // report the port we actually got (a failed attempt's callback would otherwise fire for the next one)
+  const onListening = () => { server.off("error", onError); const a = server.address(); ok(typeof a === "object" && a ? a.port : port); };
+  server.on("error", onError);
+  server.once("listening", onListening);
+  server.listen(port, "127.0.0.1");
 });
 
 export function openBrowser(link: string) {

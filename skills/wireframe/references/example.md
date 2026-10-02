@@ -87,8 +87,8 @@ watch the order status. Note that pastries sell out early."*
 
 Why it works: every screen has one primary action, the words are real, every way forward is linked with
 `goes` (so the canvas shows the flow and Play clicks through it), the tab bar is defined once in `shared`,
-layout is stacks plus one pinned cart button and a spacer, the pastry carousel the catalogue doesn't have is a
-labelled sketch box, and the "why" lives in notes instead of on the screens.
+layout is stacks plus one pinned cart button and a spacer, the pastry carousel the catalog doesn't have is a
+labeled sketch box, and the "why" lives in notes instead of on the screens.
 
 In a storyboard: `wf render order-ahead.wireframe.json`, then a panel's device can use
 `"screen": "./order-ahead.wireframe.json#status"`.

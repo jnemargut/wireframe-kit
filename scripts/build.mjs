@@ -38,7 +38,7 @@ for (const f of ["PermanentMarker-Regular.ttf", "PatrickHand-Regular.ttf", "LICE
   cpSync(`vendor/sketch/fonts/${f}`, `${OUT}/assets/fonts/${f}`);
 if (only === "cli") process.exit(0);
 
-// docs, references and schema (generated from the catalogue)
+// docs, references and schema (generated from the catalog)
 await build({ entryPoints: ["scripts/gen.ts"], outfile: "dist/gen.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "warning" });
 execFileSync("node", ["dist/gen.mjs"], { stdio: "inherit" });
 

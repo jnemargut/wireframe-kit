@@ -31,6 +31,8 @@ export interface Box {
   scale?: number;
   /** Comes from the file's `shared` pieces (global navigation): no arrows on the canvas. */
   shared?: boolean;
+  /** Placed freely by the designer (`at`). */
+  free?: boolean;
 }
 export interface ItemBox { key: string; parent: string; path: Path; index: number; x: number; y: number; w: number; h: number; goes?: string; text: string; shared?: boolean }
 export interface Layout {
@@ -327,7 +329,7 @@ function place(ctx: Ctx, n: WNode, path: Path, x: number, y: number, w: number, 
   if (depth > 0) emit(ctx, n, path, x, y, w, h, depth);
   if (!isContainer(n)) return;
   const p = padOf(n), g = gapOf(n), head = headerOf(n);
-  const kids = flowKids(n, ctx.file).filter(({ c }) => !(depth === 0 && pinOf(c)));
+  const kids = flowKids(n, ctx.file).filter(({ c }) => !(depth === 0 && (pinOf(c) || isFree(c))));
   const cx0 = x + p, cw = w - p * 2;
 
   if (typeOf(n) === "grid") {
@@ -403,18 +405,28 @@ function place(ctx: Ctx, n: WNode, path: Path, x: number, y: number, w: number, 
   });
 }
 
-const pinOf = (c: WNode): Pin | undefined => (c.pin as Pin | undefined) ?? COMPONENTS[typeOf(c)]?.defaultPin;
+/** Placed freely by the designer: [x, y] on the screen, outside the stacks. */
+export const isFree = (c: WNode) => Array.isArray(c.at) && c.at.length === 2 && c.at.every((v) => typeof v === "number" && isFinite(v));
+const pinOf = (c: WNode): Pin | undefined => (isFree(c) ? undefined : (c.pin as Pin | undefined) ?? COMPONENTS[typeOf(c)]?.defaultPin);
+
+/** Size of a freely placed element: its own width/height, else its natural size (fill = to the right edge). */
+export function freeSize(c: WNode, screenW: number, file?: WireframeFile): { w: number; h: number } {
+  const x = (c.at as [number, number])[0];
+  const mode = typeof c.width === "number" ? c.width : c.width === "hug" || c.width === "fill" ? c.width : def(c).defaultWidth;
+  const w = typeof mode === "number" ? mode : mode === "hug" ? Math.ceil(hugW(c, file)) : Math.max(40, Math.min(screenW - x - 16, 360));
+  return { w, h: typeof c.height === "number" ? c.height : heightOf(c, w, file) };
+}
 
 /** Lay out one screen. */
 export function layoutScreen(file: WireframeFile, screenId: string): Layout {
   const screen: Screen = file.screens[screenId] ?? { children: [] };
   const dev = deviceSize(file, screen);
-  const phone = dev.name === "phone" || (dev.name === "custom" && dev.w < 500 && dev.h > dev.w);
-  const statusbar = screen.statusbar ?? (phone || dev.name === "tablet");
+  const phone = dev.chrome === "phone";
+  const statusbar = screen.statusbar ?? (phone || dev.chrome === "tablet");
   const top = statusbar ? (phone ? 47 : 24) : 0;
   const home = statusbar && phone ? 34 : 0;
   const W = dev.w;
-  const pad = num(screen.pad, dev.name === "desktop" ? 32 : 16);
+  const pad = num(screen.pad, dev.w >= 1000 ? 32 : dev.w < 250 ? 10 : 16);
   const rootNode: WNode = { type: "stack", dir: screen.dir === "right" ? "right" : "down", gap: num(screen.gap, 12), pad, align: screen.align, children: screen.children ?? [] };
   const screenPath: Path = ["screens", screenId];
   const out: Box[] = [];
@@ -487,6 +499,21 @@ export function layoutScreen(file: WireframeFile, screenId: string): Layout {
   const inShared = (k: string) => sharedKeys.some((sk) => k === sk || k.startsWith(`${sk}/`) || k.startsWith(`${sk}#`));
   for (const b of out) if (inShared(b.key)) b.shared = true;
   for (const it of items) if (inShared(it.key)) it.shared = true;
+
+  // freely placed things, on top of everything, in file order
+  (screen.children ?? []).forEach((raw, i) => {
+    const c = resolveNode(file, raw);
+    if (!isFree(c)) return;
+    const [x, y] = c.at as [number, number];
+    const { w, h } = freeSize(c, W, file);
+    ctx.plane = plane++;
+    const path = [...screenPath, "children", i];
+    emit(ctx, c, path, x, y, w, h, 1, { free: true });
+    if (isContainer(c)) {
+      place(ctx, { ...c }, path, x, y, w, h, 0);
+      for (const b of out) if (b.plane === ctx.plane && b.key.startsWith(`${path.slice(2).join("/")}/`)) b.depth += 1;
+    }
+  });
 
   // the designer's nudges
   const nudges: Record<string, Nudge> = file.layout?.[screenId] ?? {};

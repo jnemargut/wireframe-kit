@@ -6,9 +6,9 @@ description: Draft low-fi, marker-style wireframes and clickable flows (app or w
 # Wireframes, built by your agent
 
 You turn a designer's loose description ("the order-ahead flow: menu, cart, pay, order status") into a
-`*.wireframe.json` file: a few screens built from a closed catalogue of about 50 components, linked together.
+`*.wireframe.json` file: a few screens built from a closed catalog of about 50 components, linked together.
 The tool validates it and opens a canvas where the designer sees the whole flow, tweaks things, and clicks
-through it. Everything is drawn in greys, in a hand-drawn marker style, so nobody mistakes it for a final design.
+through it. Everything is drawn in grays, in a hand-drawn marker style, so nobody mistakes it for a final design.
 
 ## Running the tool
 
@@ -25,7 +25,7 @@ path. **Below, `wf` is short for that whole command.**
 
 1. **Look up the components. Don't guess.** `wf vocab` lists every component by category,
    `wf vocab <component>` shows its props and an example, `wf vocab icons` lists icon names, and
-   `wf vocab --grep cart` searches. If something isn't in the catalogue, use a labelled
+   `wf vocab --grep cart` searches. If something isn't in the catalog, use a labeled
    `{ "type": "sketch", "label": "pastry carousel" }` box rather than inventing a type.
    Full list: [references/components.md](references/components.md).
 2. **Write the file**: `<name>.wireframe.json` (`wf new <file>` makes a starter). Shape:
@@ -38,7 +38,9 @@ path. **Below, `wf` is short for that whole command.**
 5. **Look at what you made.** `wf export <file> --png` renders the whole flow to one image. Read it and fix
    anything cramped, cut off or confusing before you say you're done.
 6. **Iterate on the same file.** Re-read it before each edit, because the designer may have changed things.
-   Never delete or rewrite `layout` (the designer's nudges) or `canvas` (where screens sit) unless asked.
+   The designer's own touches are theirs: `layout` (nudges), `canvas` (where screens sit), `at` (things they
+   dragged in and placed freely), and a screen's `shapes` (their drawings) and `markup` (play-mode sharpie).
+   Keep them unless asked. You can read them, though: a red circle or a scribbled note is often feedback for you.
 7. **The designer may paste a pointer** like `In order.wireframe.json, screen "cart", button "Pay" (screens.cart.children[7])`.
    That's exactly the element to change.
 8. **For a storyboard** (Storyboard Kit): `wf render <file>` writes `<name>.<screen>.png` next to the file,
@@ -63,9 +65,12 @@ path. **Below, `wf` is short for that whole command.**
   `{ "use": "tabs", "active": "Orders" }`. Arrows aren't drawn for shared navigation, so the canvas stays readable.
 - **Say why with notes.** `"note": "Pastries sell out by 10"` puts a numbered sticky beside the screen; the
   screen itself stays clean.
-- **Pick the device.** `"device": "phone"` (default), `"tablet"`, `"desktop"` (web, with a browser frame), or
-  `{ "w": 1280, "h": 800 }`. Long web pages: `"scroll": true` on the screen. A desktop app layout:
+- **Pick the device.** `"device": "phone"` (default), `"phone-small"`, `"phone-large"`, `"tablet"`,
+  `"tablet-landscape"`, `"laptop"`, `"desktop"`, `"watch"`, or any size `{ "w": 1280, "h": 800 }`. Screens can
+  mix sizes: set `device` on a screen to override the file's. To show the same screen on another device, add a
+  screen with that `device` and `"versionOf": "<original id>"`, and adapt its layout (a phone list becomes a desktop
+  grid, a tab bar becomes a top nav). Long web pages: `"scroll": true` on the screen. A desktop app layout:
   `"dir": "right"` on the screen with a `sidebar` first and a `stack` for the main column.
-- **Stay low-fi.** Greys only; there are no colour or font options on purpose. Images are crossed boxes with a
+- **Stay low-fi.** Grays only; there are no color or font options on purpose. Images are crossed boxes with a
   label unless the designer gives you a picture (`"src"`), which gets sketchified to match.
 - 3 to 10 screens per file. One file per flow.

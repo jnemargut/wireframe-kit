@@ -107,6 +107,7 @@ export function freshCopy(doc: WireframeFile, node: unknown): unknown {
     if (!x || typeof x !== "object") return;
     delete x.id;
     if (typeof x.goes === "string" && x.goes !== "back" && !doc.screens[x.goes]) delete x.goes;
+    for (const list of [x.items, x.actions]) if (Array.isArray(list)) list.forEach((it) => { if (it && typeof it === "object" && typeof (it as WNode).goes === "string" && (it as WNode).goes !== "back" && !doc.screens[(it as WNode).goes!]) delete (it as WNode).goes; });
     x.children?.forEach(walk);
   };
   walk(n);
@@ -190,4 +191,41 @@ export function pointer(file: string, doc: WireframeFile, screen: string, key: s
   const dotted = path.map((p) => (typeof p === "number" ? `[${p}]` : `.${p}`)).join("").slice(1);
   const what = typeof n === "string" ? `item "${n}"` : n ? `${n.type ?? n.use ?? "element"}${n.text || n.label || n.title ? ` "${n.text ?? n.label ?? n.title}"` : ""}${n.id ? ` (id "${n.id}")` : ""}` : "screen";
   return key ? `In ${file}, screen "${screen}", ${what} (${dotted}): ` : `In ${file}, screen "${screen}": `;
+}
+
+/** When a screen gets wider on a canvas with saved positions, slide the screens to its right along so nothing overlaps. */
+export function keepClear(prev: WireframeFile, next: WireframeFile, width: (d: WireframeFile, id: string) => number): WireframeFile {
+  if (!next.canvas) return next;
+  let out = next;
+  for (const id of Object.keys(next.screens)) {
+    if (!prev.screens[id] || !next.canvas[id]) continue;
+    const dw = width(next, id) - width(prev, id);
+    if (!dw) continue;
+    const x0 = next.canvas[id][0];
+    const canvas = { ...out.canvas! };
+    for (const [k, [x, y]] of Object.entries(canvas)) if (k !== id && x > x0) canvas[k] = [x + dw, y];
+    out = { ...out, canvas };
+  }
+  return out;
+}
+
+/** The same screen as another device, placed under the original: "how does this look on desktop?" */
+export function versionAs(doc: WireframeFile, id: string, device: string, below: (d: WireframeFile, id: string) => { x: number; y: number; h: number } | undefined): { doc: WireframeFile; id: string } {
+  let nid = `${id}-${device}`, i = 2;
+  while (doc.screens[nid]) nid = `${id}-${device}-${i++}`;
+  const d = clone(doc);
+  const entries = Object.entries(d.screens);
+  const at = entries.findIndex(([k]) => k === id) + 1;
+  const src = d.screens[id];
+  const label = device.replace(/-/g, " ");
+  entries.splice(at, 0, [nid, { ...clone(src), device: device as never, title: `${src.title ?? id} (${label})`, versionOf: src.versionOf ?? id, markup: undefined }]);
+  d.screens = Object.fromEntries(entries);
+  if (d.layout?.[id]) d.layout[nid] = clone(d.layout[id]);
+  const spot = below(doc, id);
+  if (spot) {
+    // freeze where everything is now, then put the new version under its original
+    d.canvas = { ...(d.canvas ?? {}) };
+    d.canvas[nid] = [spot.x, spot.y + spot.h + 180];
+  }
+  return { doc: d, id: nid };
 }

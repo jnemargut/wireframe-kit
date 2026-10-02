@@ -1,7 +1,8 @@
 import { formatIssues, suggest, type Issue, type Result } from "../vendor/sketch/suggest";
 import { layoutScreen, linksOf, typeOf, type Layout } from "./layout";
 import { textWidth } from "./text";
-import { COMMON, COMPONENTS, DEVICES, ICONS, PINS, propsOf, TYPES, type PropDef } from "./vocab";
+import { CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, propsOf, TYPES, type PropDef } from "./vocab";
+import { MARKER_COLORS, SHAPE_TYPES } from "../vendor/sketch/shapes";
 import { resolveNode, type WireframeFile, type WNode } from "./types";
 
 export type { Issue, Result };
@@ -9,7 +10,8 @@ export type { Issue, Result };
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const TOP = ["$schema", "title", "device", "start", "shared", "screens", "layout", "canvas"];
-const SCREEN = ["title", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "note", "children"];
+const SCREEN = ["title", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "chrome", "versionOf", "note", "children", "shapes", "markup"];
+const SHAPE_KEYS = ["id", "type", "points", "fill", "text", "color"];
 const ITEM = ["text", "title", "subtitle", "meta", "icon", "image", "goes"];
 
 export function validate(input: unknown): Result {
@@ -79,18 +81,19 @@ export function validate(input: unknown): Result {
         });
         if (type === "navbar") v.forEach((it, i) => { const name = typeof it === "string" ? it : isObj(it) ? it.icon : undefined; if (name !== undefined && !(ICONS as readonly string[]).includes(String(name))) { const s = suggest(String(name), ICONS); err(`${path}[${i}]`, `"${String(name)}" isn't an icon.`, s ? `Did you mean "${s}"?` : "Navbar actions are icon names."); } });
         break;
+      case "point": if (!Array.isArray(v) || v.length !== 2 || v.some((x) => typeof x !== "number")) err(path, "must be [x, y] in screen px, e.g. [24, 300]."); break;
       case "children": break;
     }
   };
 
   const seenIds = new Map<string, Set<string>>();
-  const checkNode = (path: string, raw: unknown, screen: string) => {
+  const checkNode = (path: string, raw: unknown, screen: string, topLevel = false) => {
     if (!isObj(raw)) { err(path, "must be an object like { \"type\": \"button\", \"text\": \"Pay\" }."); return; }
     const n = raw as WNode;
     if (n.use !== undefined) {
       if (typeof n.use !== "string" || !shared[n.use]) { const s = typeof n.use === "string" ? suggest(n.use, Object.keys(shared)) : undefined; err(`${path}.use`, `"${String(n.use)}" isn't in this file's "shared" pieces.`, s ? `Did you mean "${s}"?` : Object.keys(shared).length ? `Shared pieces: ${Object.keys(shared).join(", ")}` : "Define it under \"shared\" first."); return; }
     } else if (typeof n.type !== "string") { err(path, "needs a \"type\" (or \"use\" for a shared piece).", "Run `wf vocab` to see the components."); return; }
-    else if (!COMPONENTS[n.type]) { const s = suggest(n.type, TYPES); err(`${path}.type`, `"${n.type}" isn't a component.`, s ? `Did you mean "${s}"? Or use { "type": "sketch", "label": "${n.type}" } for something the catalogue doesn't have.` : `Use { "type": "sketch", "label": "${n.type}" } for things the catalogue doesn't have, or run \`wf vocab\`.`); return; }
+    else if (!COMPONENTS[n.type]) { const s = suggest(n.type, TYPES); err(`${path}.type`, `"${n.type}" isn't a component.`, s ? `Did you mean "${s}"? Or use { "type": "sketch", "label": "${n.type}" } for something the catalog doesn't have.` : `Use { "type": "sketch", "label": "${n.type}" } for things the catalog doesn't have, or run \`wf vocab\`.`); return; }
     const res = n.use ? resolveNode(input as unknown as WireframeFile, n) : n;
     const type = typeOf(res);
     const known = propsOf(type);
@@ -113,6 +116,7 @@ export function validate(input: unknown): Result {
         v.forEach((c, i) => checkNode(`${path}.children[${i}]`, c, screen));
         continue;
       }
+      if (k === "at" && !topLevel) warn(`${path}.at`, "Free placement only works for things directly on a screen, so it's ignored here.", "Move it to the screen's children, or drop \"at\".");
       checkProp(`${path}.${k}`, k, v, d, type);
     }
     if (COMPONENTS[type].container && !Array.isArray(res.children) && type !== "sheet" && type !== "dialog") warn(path, `This ${type} is empty.`, "Give it \"children\".");
@@ -127,9 +131,24 @@ export function validate(input: unknown): Result {
     if (!isObj(sc)) { err(sp, "must be an object with \"children\"."); continue; }
     for (const k of Object.keys(sc)) if (!SCREEN.includes(k)) unknownKey(sp, k, SCREEN, "a screen");
     deviceOk(`${sp}.device`, sc.device);
+    if (sc.versionOf !== undefined && (typeof sc.versionOf !== "string" || !screens[sc.versionOf])) { const sg = typeof sc.versionOf === "string" ? suggest(sc.versionOf, ids) : undefined; err(`${sp}.versionOf`, `"${String(sc.versionOf)}" isn't a screen in this file.`, sg ? `Did you mean "${sg}"?` : `Screens: ${ids.join(", ")}`); }
     if (sc.dir !== undefined && sc.dir !== "down" && sc.dir !== "right") err(`${sp}.dir`, "must be \"down\" or \"right\".");
     if (!Array.isArray(sc.children)) { err(`${sp}.children`, "is required: the list of what's on the screen."); continue; }
-    sc.children.forEach((c, i) => checkNode(`${sp}.children[${i}]`, c, id));
+    sc.children.forEach((c, i) => checkNode(`${sp}.children[${i}]`, c, id, true));
+    if (sc.chrome !== undefined && !(CHROMES as readonly string[]).includes(String(sc.chrome))) { const sg = suggest(String(sc.chrome), CHROMES); err(`${sp}.chrome`, `"${String(sc.chrome)}" isn't a device body.`, sg ? `Did you mean "${sg}"?` : `Use one of: ${CHROMES.join(", ")}`); }
+    for (const [key, list] of [["shapes", sc.shapes], ["markup", sc.markup]] as const) {
+      if (list === undefined) continue;
+      if (!Array.isArray(list)) { err(`${sp}.${key}`, "must be a list."); continue; }
+      list.forEach((sh, i) => {
+        const q = `${sp}.${key}[${i}]`;
+        if (!isObj(sh) || !Array.isArray(sh.points) || !sh.points.length || sh.points.some((pt: unknown) => !Array.isArray(pt) || pt.length !== 2 || pt.some((x) => typeof x !== "number"))) { err(q, "needs \"points\": [[x, y], …]."); return; }
+        if (key === "shapes") {
+          for (const k of Object.keys(sh)) if (!SHAPE_KEYS.includes(k)) unknownKey(q, k, SHAPE_KEYS, "a shape");
+          if (!(SHAPE_TYPES as readonly string[]).includes(String(sh.type))) { const sg = suggest(String(sh.type), SHAPE_TYPES); err(`${q}.type`, `"${String(sh.type)}" isn't a shape.`, sg ? `Did you mean "${sg}"?` : `Use one of: ${SHAPE_TYPES.join(", ")}`); }
+        }
+        if (sh.color !== undefined && !(MARKER_COLORS as readonly string[]).includes(String(sh.color))) err(`${q}.color`, `"${String(sh.color)}" isn't a marker color.`, `Use one of: ${MARKER_COLORS.join(", ")}`);
+      });
+    }
   }
   for (const [k, v] of Object.entries(isObj(f.layout) ? f.layout : {})) if (!screens[k]) warn(`$.layout.${k}`, `Nudges for a screen that doesn't exist ("${k}").`);
 
@@ -143,7 +162,7 @@ export function validate(input: unknown): Result {
     const start = file.start ?? ids[0];
     for (const [id, l] of Object.entries(layouts)) {
       const sp = `$.screens.${id}`;
-      if (ids.length > 1 && id !== start && !linked.has(id)) warn(sp, `Nothing links to "${id}" yet.`, `Give a button or list item "goes": "${id}" so the flow can reach it.`);
+      if (ids.length > 1 && id !== start && !linked.has(id) && !file.screens[id].versionOf) warn(sp, `Nothing links to "${id}" yet.`, `Give a button or list item "goes": "${id}" so the flow can reach it.`);
       if (l.overflow > 8) warn(sp, `Content runs ${l.overflow}px past the bottom of the screen.`, "Trim it, or set \"scroll\": true if it's a long page.");
       const leaves = l.boxes.filter((b) => !b.hidden && !COMPONENTS[b.type]?.container && b.type !== "spacer");
       const primaries = leaves.filter((b) => b.type === "button" && b.node.variant === "primary");
@@ -156,7 +175,7 @@ export function validate(input: unknown): Result {
         if (textWidth(String(b.node.text ?? ""), "hand", size) > b.w - (b.node.icon ? 46 : 16)) warn(`${sp} (${b.key})`, `The button "${b.node.text}" is cut off.`, "Shorten the words or let the button fill the width.");
       }
       // pinned things sitting on top of content
-      for (const p of l.boxes.filter((b) => b.pinned && !b.scrim && !b.hidden && !COMPONENTS[b.type]?.bleed)) {
+      for (const p of l.boxes.filter((b) => b.pinned && !b.free && !b.scrim && !b.hidden && !COMPONENTS[b.type]?.bleed)) {
         const hit = leaves.find((b) => b.plane === 0 && b.x < p.x + p.w - 4 && b.x + b.w > p.x + 4 && b.y < p.y + p.h - 4 && b.y + b.h > p.y + 4);
         if (hit) warn(`${sp} (${p.key})`, `The pinned ${p.type} covers a ${hit.type}${hit.node.text ? ` ("${hit.node.text}")` : ""}.`, "Move it, add a spacer at the end of the screen, or pin it somewhere else.");
       }

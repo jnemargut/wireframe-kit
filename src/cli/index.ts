@@ -22,7 +22,7 @@ It's an agent skill: ${SKILL_ROOT}
 Usage: ${RUN} <command> [options]
 
   new <file> [--title "…"] [--device phone|tablet|desktop]   Create a starter wireframe
-  vocab [category|component|icons] [--grep x] [--json]       The component catalogue, with props and examples
+  vocab [category|component|icons] [--grep x] [--json]       The component catalog, with props and examples
   validate <file> [--json]        Check a wireframe; errors include fixes
   dev [file] [--port 4400]        Open the flow canvas editor (--no-open); edits save to the file live
   render <file>[#screen] [--size 390x844] [--scale 2]

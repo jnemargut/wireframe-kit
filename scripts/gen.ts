@@ -1,4 +1,4 @@
-/** Regenerates schema.json and the agent skill docs from the catalogue so they never drift. Runs as part of the build. */
+/** Regenerates schema.json and the agent skill docs from the catalog so they never drift. Runs as part of the build. */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { buildSchema } from "../src/schema";
 import { FORMAT_MD, SKILL_MD, componentsMd, exampleMd } from "../src/skill";
