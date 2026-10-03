@@ -137,7 +137,7 @@ builds stays in tidy stacks, and anything you drag in lands exactly where you dr
 
 **Drawing**
 
-- A pen, boxes, ovals, lines, arrows and free text in six marker colors, for anything the components don't cover
+- A pen, boxes, ovals, lines, arrows and free text in six marker colors (or any color with the **+**), for anything the components don't cover
   or a quick "look here". Shortcuts: V, D, R, O, L, A, T.
 
 **Everything else**

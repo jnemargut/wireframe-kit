@@ -71,4 +71,10 @@ describe("catalog", () => {
     expect(d.y).toBe(84);
     expect(d.y + d.h).toBe(l.h);
   });
+
+  it("drawings take any hex color", () => {
+    const f: WireframeFile = { title: "t", screens: { s: { children: [], shapes: [{ type: "rect", points: [[10, 10], [80, 60]], color: "#E8B04B", fill: "mid" }] } } };
+    expect(validate(f).errors).toEqual([]);
+    expect(screenSVG(f, "s").toLowerCase()).toContain("#e8b04b");
+  });
 });

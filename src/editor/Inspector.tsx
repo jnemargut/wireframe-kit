@@ -4,6 +4,7 @@ import type { ItemBox, Layout } from "../layout";
 import { resolveNode, startScreen, type Item, type WireframeFile, type WNode } from "../types";
 import { CATEGORIES, CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, type PropDef } from "../vocab";
 import { MARKER } from "../../vendor/sketch/tokens";
+import { AnyColor } from "../../vendor/sketch/color";
 import { Icon } from "../render/icons";
 import { COLORS } from "../../vendor/sketch/tools";
 import { getAt, keyOf, pathOf, setProp, type Sel } from "./model";
@@ -311,7 +312,7 @@ function ShapePanel({ doc, screen, index, a }: { doc: WireframeFile; screen: str
       <h3>{SHAPE_NAME[sh.type] ?? "Drawing"}<small> Drawing</small></h3>
       <p className="doc">Your own marks on the screen, for anything the components don't cover.</p>
       <div className="field"><span>Color</span>
-        <span className="swatches">{COLORS.map((c) => <button key={c} title={c} aria-label={c} className={(sh.color ?? "ink") === c ? "on" : ""} onClick={() => a.setProp(path, "color", c === "ink" ? undefined : c)}><span className="dot" style={{ background: MARKER[c] }} /></button>)}</span>
+        <span className="swatches">{COLORS.map((c) => <button key={c} title={c} aria-label={c} className={(sh.color ?? "ink") === c ? "on" : ""} onClick={() => a.setProp(path, "color", c === "ink" ? undefined : c)}><span className="dot" style={{ background: MARKER[c] }} /></button>)}<AnyColor value={sh.color} onPick={(h) => a.setProp(path, "color", h)} /></span>
       </div>
       {sh.type === "rect" || sh.type === "ellipse" || sh.type === "path" ? (
         <label className="field"><span>Fill</span>

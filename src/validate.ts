@@ -1,3 +1,4 @@
+import { isHex } from "../vendor/sketch/tokens";
 import { formatIssues, suggest, type Issue, type Result } from "../vendor/sketch/suggest";
 import { findUndrawable, undrawableHint } from "../vendor/sketch/glyphs";
 import { isCrop } from "../vendor/sketch/crop";
@@ -153,7 +154,7 @@ export function validate(input: unknown): Result {
           if (!(SHAPE_TYPES as readonly string[]).includes(String(sh.type))) { const sg = suggest(String(sh.type), SHAPE_TYPES); err(`${q}.type`, `"${String(sh.type)}" isn't a shape.`, sg ? `Did you mean "${sg}"?` : `Use one of: ${SHAPE_TYPES.join(", ")}`); }
         }
         const colors: readonly string[] = key === "shapes" ? SHAPE_COLORS : MARKER_COLORS;
-        if (sh.color !== undefined && !colors.includes(String(sh.color))) err(`${q}.color`, `"${String(sh.color)}" isn't a marker color.`, `Use one of: ${colors.join(", ")}`);
+        if (sh.color !== undefined && !colors.includes(String(sh.color)) && !isHex(sh.color)) err(`${q}.color`, `"${String(sh.color)}" isn't a marker color.`, `Use one of: ${colors.join(", ")}, or any hex like "#e8b04b".`);
         if (sh.fill !== undefined && !(SHAPE_FILLS as readonly string[]).includes(String(sh.fill))) err(`${q}.fill`, `"${String(sh.fill)}" isn't a fill.`, `Use one of: ${SHAPE_FILLS.join(", ")}`);
         if (sh.weight !== undefined && !(SHAPE_WEIGHTS as readonly string[]).includes(String(sh.weight))) err(`${q}.weight`, `"${String(sh.weight)}" isn't a line weight.`, `Use one of: ${SHAPE_WEIGHTS.join(", ")}`);
         if (sh.size !== undefined && !(TEXT_SIZES as readonly string[]).includes(String(sh.size))) err(`${q}.size`, `"${String(sh.size)}" isn't a text size.`, `Use one of: ${TEXT_SIZES.join(", ")}`);
