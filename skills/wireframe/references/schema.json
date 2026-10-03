@@ -739,6 +739,16 @@
           "description": "Round corners a lot (or a circle when square).",
           "type": "boolean"
         },
+        "mirror": {
+          "description": "Flip the picture left to right.",
+          "type": "boolean"
+        },
+        "turn": {
+          "description": "Turn the picture clockwise: 0, 90, 180 or 270.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 270
+        },
         "chevrons": {
           "description": "Show › on every row.",
           "type": "boolean"

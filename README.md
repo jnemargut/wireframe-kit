@@ -103,7 +103,7 @@ Or just click around yourself. Your edits and the agent's edits land in the same
   floats them in a corner. It never writes coordinates, so nothing ends up 3 pixels off.
 - **Notes.** Little numbered stickies beside a screen for the "why", so the screen itself stays clean.
 - **Any picture at all.** Drop, paste or upload a photo and it gets sketchified in grays to match (or shows as it
-  is, your call). Hit **Crop…** to show just the part you want.
+  is, your call). Hit **Crop…** to show just the part you want, or mirror and turn it.
 - **Bold, italic, underline and strikethrough** in any text: `**bold**`, `*italic*`, `__underline__`, `~~$6.50~~`,
   or Cmd+B, Cmd+I and Cmd+U in the editor.
 
@@ -137,7 +137,7 @@ builds stays in tidy stacks, and anything you drag in lands exactly where you dr
 
 **Drawing**
 
-- A pen, boxes, ovals, lines, arrows and free text in six marker colors (or any color with the **+**), for anything the components don't cover
+- A pen, boxes, ovals, lines, arrows and free text in six marker colors (or any color with the **+**) and three line weights, for anything the components don't cover
   or a quick "look here". Shortcuts: V, D, R, O, L, A, T.
 
 **Everything else**

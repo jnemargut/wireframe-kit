@@ -14,7 +14,8 @@ const read = () => JSON.parse(readFileSync(file, "utf8"));
 let failures = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ok = (name, cond, extra = "") => { console.log(`${cond ? "✓" : "✗"} ${name}${cond ? "" : ` ${extra}`}`); if (!cond) failures++; };
-const until = async (fn, ms = 4000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await fn()) return true; await new Promise((r) => setTimeout(r, 80)); } return false; };
+// a read can land mid-save (half a file): that's "not yet", so keep waiting
+const until = async (fn, ms = 4000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (await fn()) return true; } catch { /* mid-save */ } await new Promise((r) => setTimeout(r, 80)); } return false; };
 
 // CLI
 const cli = (...a) => execFileSync(process.execPath, [WF, ...a], { cwd: dir, encoding: "utf8" });
@@ -115,7 +116,7 @@ ok("handles resize it", await until(() => { const c = read().screens.menu.childr
 // draw a red box
 await page.keyboard.press("Escape");
 await page.locator(".tools button[title='Box (R)']").click();
-await page.locator(".tool-color > button").click();
+await page.locator(".tool-color > button[aria-label='Marker color']").click();
 await page.locator(".color-pop button[title='red']").click();
 await page.mouse.move(origin.x + 40 * origin.k, origin.y + 300 * origin.k); await page.mouse.down(); await page.mouse.move(origin.x + 250 * origin.k, origin.y + 380 * origin.k, { steps: 5 }); await page.mouse.up();
 ok("the box tool draws on the screen", await until(() => read().screens.menu.shapes?.some((x) => x.type === "rect" && x.color === "red")));

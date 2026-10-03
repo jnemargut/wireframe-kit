@@ -223,7 +223,7 @@ const defs: ComponentDef[] = [
 
   // content
   { type: "image", category: "content", defaultWidth: "fill", doc: "An image placeholder (a crossed box). Give `src` to use a real picture; it's sketchified in grays (`\"sketch\": false` shows it as it is).",
-    props: { label: t("What the picture is."), aspect: t("Shape when there's no height: \"16:9\", \"1:1\", \"4:3\"."), src: t("Optional image file path, sketchified."), sketch: b("false shows the picture as it is, instead of sketchified in grays."), crop: { type: { kind: "crop" }, doc: "Show only part of the picture: [left, top, right, bottom] as fractions (the editor's Crop button writes it)." }, round: b("Round corners a lot (or a circle when square)."), state: st("hover", "selected") },
+    props: { label: t("What the picture is."), aspect: t("Shape when there's no height: \"16:9\", \"1:1\", \"4:3\"."), src: t("Optional image file path, sketchified."), sketch: b("false shows the picture as it is, instead of sketchified in grays."), crop: { type: { kind: "crop" }, doc: "Show only part of the picture: [left, top, right, bottom] as fractions (the editor's Crop button writes it)." }, round: b("Round corners a lot (or a circle when square)."), mirror: b("Flip the picture left to right."), turn: n("Turn the picture clockwise: 0, 90, 180 or 270.", 0, 270), state: st("hover", "selected") },
     example: { type: "image", label: "Latte art photo", aspect: "16:9" } },
   { type: "avatar", category: "content", defaultWidth: "hug", doc: "A round profile picture or initials.",
     props: { text: t("Initials (otherwise a head shape)."), size: n("Diameter (default 40).", 16, 200) }, example: { type: "avatar", text: "MJ" } },

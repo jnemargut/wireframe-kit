@@ -64,9 +64,10 @@ export async function dev(file: string, o: DevOptions) {
         if (!p || !existsSync(p)) { res.writeHead(404); return res.end(); }
         const crop = url.searchParams.get("crop")?.split(",").map(Number) as Crop | undefined;
         const c = isCrop(crop) ? crop : undefined;
-        if (url.searchParams.get("raw")) { const pic = croppedImage(p, cacheDirFor(abs), c); res.writeHead(200, { "content-type": pic.mime, "cache-control": "no-cache" }); return res.end(pic.buf); }
+        const o = { mirror: url.searchParams.get("mirror") === "1", turn: Number(url.searchParams.get("turn") ?? 0) };
+        if (url.searchParams.get("raw")) { const pic = croppedImage(p, cacheDirFor(abs), c, o); res.writeHead(200, { "content-type": pic.mime, "cache-control": "no-cache" }); return res.end(pic.buf); }
         res.writeHead(200, { "content-type": "image/png", "cache-control": "no-cache" });
-        return res.end(bakeImage(p, cacheDirFor(abs), 1, "grey", c));
+        return res.end(bakeImage(p, cacheDirFor(abs), 1, "grey", c, o));
       }
       if (url.pathname === "/api/upload" && req.method === "POST") {
         const raw = (url.searchParams.get("name") ?? "image.png").toLowerCase().replace(/[^a-z0-9._-]+/g, "-");

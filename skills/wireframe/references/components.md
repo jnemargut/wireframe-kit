@@ -595,6 +595,8 @@ An image placeholder (a crossed box). Give `src` to use a real picture; it's ske
   - `sketch`: false shows the picture as it is, instead of sketchified in grays.
   - `crop`: Show only part of the picture: [left, top, right, bottom] as fractions (the editor's Crop button writes it).
   - `round`: Round corners a lot (or a circle when square).
+  - `mirror`: Flip the picture left to right.
+  - `turn`: Turn the picture clockwise: 0, 90, 180 or 270.
   - `state`: Draw it in a state: hover (the pointer is over it), selected (outlined). Default normal. (`normal`, `hover`, `selected`)
 
 ```json

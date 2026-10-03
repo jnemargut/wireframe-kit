@@ -117,8 +117,11 @@ function Field({ k, d, node, path, screens, a, focusText }: { k: string; d: Prop
   let input;
   switch (t.kind) {
     case "text": input = <TextIn id={primary ? "insp-text" : undefined} autoFocusKey={primary ? focusText : undefined} value={v == null ? "" : String(v)} multiline={k === "note" || (k === "text" && (node.type === "text" || node.type === "alert"))} onChange={set} />; break;
-    case "number": input = <NumIn value={v} min={t.min} max={t.max} onChange={set} />; break;
-    case "bool": input = <input type="checkbox" checked={v === true} onChange={(e) => set(e.target.checked ? true : undefined)} />; break;
+    case "number":
+      // turning a picture: a quarter turn clockwise per click
+      if (k === "turn") { if (!node.src) return null; const cur = typeof v === "number" ? v : 0; input = <button type="button" className="btn small" onClick={() => set((cur + 90) % 360 || undefined)} title="Turn the picture a quarter turn clockwise">Turn ↻{cur ? ` (${cur}°)` : ""}</button>; break; }
+      input = <NumIn value={v} min={t.min} max={t.max} onChange={set} />; break;
+    case "bool": if (k === "mirror" && !node.src) return null; input = <input type="checkbox" checked={v === true} onChange={(e) => set(e.target.checked ? true : undefined)} />; break;
     case "enum": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">default</option>{t.values.map((x) => <option key={x}>{x}</option>)}</select>; break;
     case "icon": input = <IconPicker value={v == null ? "" : String(v)} onChange={set} />; break;
     case "screen": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">no link</option>{screens.map((s) => <option key={s} value={s}>→ {s}</option>)}<option value="back">← back</option></select>; break;

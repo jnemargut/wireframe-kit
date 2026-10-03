@@ -276,7 +276,7 @@ function drawBase(b: Box, ctx: DrawCtx): Drawn {
     // ---------- content ----------
     case "image": {
       const rx = n.round ? (Math.abs(w - h) < 2 ? w / 2 : 18) : 8;
-      const href = n.src && ctx.asset ? ctx.asset(s(n.src), n.sketch === false, Array.isArray(n.crop) ? (n.crop as number[]) : undefined) : undefined;
+      const href = n.src && ctx.asset ? ctx.asset(s(n.src), n.sketch === false, Array.isArray(n.crop) ? (n.crop as number[]) : undefined, { mirror: n.mirror === true, turn: typeof n.turn === "number" ? n.turn : 0 }) : undefined;
       if (href) {
         const id = `${uid}-img`;
         return { shape: <g><clipPath id={id}><rect x={x} y={y} width={w} height={h} rx={rx} /></clipPath><image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id})`} />{R(x, y, w, h, { rx })}</g> };

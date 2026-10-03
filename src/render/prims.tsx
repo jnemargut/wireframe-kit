@@ -9,12 +9,13 @@ import { fit, textWidth, wrap, type Face } from "../text";
 import { itemText, type Item } from "../types";
 import { guessIcon } from "../vocab";
 import { hasIcon } from "./icons";
+import type { Orient } from "../../vendor/sketch/crop";
 
 /** A component's art: `shape` gets the marker wobble, `words` stays crisp; `pop` is drawn over the whole screen (open dropdowns, menus). */
 export interface Drawn { shape?: ReactNode; words?: ReactNode; popShape?: ReactNode; popWords?: ReactNode }
 export interface DrawCtx {
   /** Resolve an image `src` to an href (already sketchified). */
-  asset?: (src: string, raw?: boolean, crop?: number[]) => string | undefined;
+  asset?: (src: string, raw?: boolean, crop?: number[], orient?: Orient) => string | undefined;
   /** Unique prefix for clip-path ids. */
   uid: string;
 }

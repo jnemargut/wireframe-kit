@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { PDFDocument } from "pdf-lib";
-import { bakeImage, croppedImage, isCrop } from "../vendor/sketch/bake";
+import { bakeImage, croppedImage, isCrop, isPlain, normTurn, type Orient } from "../vendor/sketch/bake";
 import { drawingFonts, fontFaceCss } from "../vendor/sketch/fonts";
 import { initRenderer, renderPNG } from "../vendor/sketch/resvg";
 import { layoutScreen } from "./layout";
@@ -23,16 +23,17 @@ const MIME: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpe
 export function assetResolver(file: string) {
   const base = dirname(resolve(file));
   const memo = new Map<string, string | undefined>();
-  return (p: string, raw?: boolean, crop?: number[]) => {
+  return (p: string, raw?: boolean, crop?: number[], orient?: Orient) => {
     const c = isCrop(crop) ? crop : undefined;
-    const k = `${p}:${!!raw}:${c?.join(",") ?? ""}`;
+    const o = isPlain(orient) ? undefined : orient;
+    const k = `${p}:${!!raw}:${c?.join(",") ?? ""}:${o ? `${o.mirror ? 1 : 0}${normTurn(o.turn)}` : ""}`;
     if (memo.has(k)) return memo.get(k);
     const abs = resolve(base, p);
     let uri: string | undefined;
     if (existsSync(abs)) {
       try {
-        if (raw) { const pic = croppedImage(abs, cacheDirFor(file), c); uri = `data:${pic.mime};base64,${pic.buf.toString("base64")}`; }
-        else uri = `data:image/png;base64,${bakeImage(abs, cacheDirFor(file), 1, "grey", c).toString("base64")}`;
+        if (raw) { const pic = croppedImage(abs, cacheDirFor(file), c, o); uri = `data:${pic.mime};base64,${pic.buf.toString("base64")}`; }
+        else uri = `data:image/png;base64,${bakeImage(abs, cacheDirFor(file), 1, "grey", c, o).toString("base64")}`;
       }
       catch { uri = undefined; }
     }

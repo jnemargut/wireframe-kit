@@ -7,12 +7,13 @@ import { layoutScreen, type Box, type Layout } from "../layout";
 import type { MarkupStroke, SketchShape, WireframeFile } from "../types";
 import { draw, HomeIndicator, StatusBar, type DrawCtx } from "./components";
 import { BrowserBar } from "./more";
+import type { Orient } from "../../vendor/sketch/crop";
 import { BROWSER_BAR } from "../layout";
 
 export interface ScreenOpts {
   /** Wobble on (off while dragging in the editor). */
   wobble?: boolean;
-  asset?: (src: string, raw?: boolean, crop?: number[]) => string | undefined;
+  asset?: (src: string, raw?: boolean, crop?: number[], orient?: Orient) => string | undefined;
   /** Unique id prefix when several screens share one SVG. */
   uid?: string;
   /** Round the screen's corners (to sit inside a device body). */

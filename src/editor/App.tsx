@@ -40,6 +40,8 @@ export function App() {
   const [error, setError] = useState("");
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState("ink");
+  /** Line thickness for new drawings. */
+  const [weight, setWeight] = useState("normal");
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const [cropping, setCropping] = useState<(string | number)[] | null>(null);
   const undo = useRef<WireframeFile[]>([]);
@@ -294,7 +296,7 @@ export function App() {
   /** A new drawing: preview while dragging, keep it on release (tiny accidental ones are dropped). */
   const onDraw = (screen: string, kind: Tool, points: [number, number][], commit: boolean) => {
     if (!doc || kind === "select" || kind === "text") return;
-    const shape: SketchShape = { type: kind === "pen" ? "path" : kind, points, ...(color !== "ink" ? { color } : {}) };
+    const shape: SketchShape = { type: kind === "pen" ? "path" : kind, points, ...(color !== "ink" ? { color } : {}), ...(weight !== "normal" ? { weight } : {}) };
     const box = shapeBox(shape);
     const real = kind === "pen" ? points.length > 2 : box.w + box.h > 6;
     const shapes = [...(doc.screens[screen]?.shapes ?? []), shape];
@@ -591,7 +593,7 @@ export function App() {
             onDraw={onDraw} onTextTool={onTextTool} onStartEdit={(s2, k) => { setSel({ screen: s2, key: k }); startEdit(s2, k); }} editing={editing} onEditDone={finishEdit}
             onDropNode={onDropNode} onDropFile={onDropFile}
             asset={asset} dragging={dragging} setDragging={setDragging} />
-          <Tools tool={tool} setTool={setTool} color={color} setColor={setColor} />
+          <Tools tool={tool} setTool={setTool} color={color} setColor={setColor} weight={weight} setWeight={setWeight} />
           {error ? <div className="banner">{error}</div> : null}
         </div>
         {props ? <Inspector doc={doc} layouts={layouts} sel={sel} result={result} a={a} focusText={focusText} /> : null}
