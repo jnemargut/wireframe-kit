@@ -6,6 +6,8 @@ import { MarkupStrokes, ShapeMark, shapeId } from "../../vendor/sketch/shapes";
 import { layoutScreen, type Box, type Layout } from "../layout";
 import type { MarkupStroke, SketchShape, WireframeFile } from "../types";
 import { draw, HomeIndicator, StatusBar, type DrawCtx } from "./components";
+import { BrowserBar } from "./more";
+import { BROWSER_BAR } from "../layout";
 
 export interface ScreenOpts {
   /** Wobble on (off while dragging in the editor). */
@@ -49,7 +51,8 @@ export function ScreenArt({ layout, opts = {}, shapes = [], markup = [] }: { lay
     const scrim = bs.some((b) => b.scrim);
     return (
       <g key={p}>
-        {scrim ? <rect x={0} y={0} width={layout.w} height={layout.h} fill={C.ink} opacity={0.28} /> : null}
+        {/* the browser's own tabs and address bar stay bright over a page's dimmed overlay */}
+        {scrim ? <rect x={0} y={layout.browser ? layout.browser.y + BROWSER_BAR : 0} width={layout.w} height={layout.h} fill={C.ink} opacity={0.28} /> : null}
         <g filter={filter}>{bs.map((b) => <g key={b.key}>{scaled(b, drawn.get(b)?.shape)}</g>)}</g>
         <g>{bs.map((b) => <g key={b.key}>{scaled(b, drawn.get(b)?.words)}</g>)}</g>
       </g>
@@ -65,7 +68,10 @@ export function ScreenArt({ layout, opts = {}, shapes = [], markup = [] }: { lay
         <rect x={0} y={0} width={layout.w} height={layout.h} fill={C.paper} />
         {layer(0)}
         {layout.statusbar ? <StatusBar w={layout.w} phone={layout.phone} /> : null}
+        {layout.browser ? <BrowserBar x={0} y={layout.browser.y} w={layout.w} url={layout.browser.url} title={layout.browser.title} top={!layout.statusbar} /> : null}
         {planes.filter((p) => p > 0).map(layer)}
+        {/* open dropdowns, menus and calendars float over everything */}
+        {layout.boxes.filter((b) => !b.hidden && drawn.get(b)?.popShape).map((b) => <g key={`pop-${b.key}`}><g filter={filter}>{scaled(b, drawn.get(b)?.popShape)}</g>{scaled(b, drawn.get(b)?.popWords)}</g>)}
         {layout.statusbar && layout.phone ? <HomeIndicator w={layout.w} h={layout.h} /> : null}
         {!opts.hideShapes && shapes.length ? <g filter={filter}>{shapes.map((sh, i) => <g key={shapeId(sh, i)}><ShapeMark s={sh} scale={shapeScale(layout.w)} /></g>)}</g> : null}
         {opts.showMarkup && markup.length ? <g pointerEvents={opts.markupHit ? "stroke" : "none"}><MarkupStrokes strokes={markup} hit={opts.markupHit} scale={shapeScale(layout.w)} /></g> : null}

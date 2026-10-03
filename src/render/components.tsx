@@ -2,86 +2,27 @@
  * How each component is drawn. Every drawing returns two layers: `shape` (outlines and fills, which get
  * the marker wobble) and `words` (text and icons, kept crisp so dense screens stay readable).
  */
-import { plainText, richLines } from "../../vendor/sketch/rich";
 import type { ReactNode } from "react";
 import { C } from "../../vendor/sketch/tokens";
 import { aspect, chipRects, FS, itemRects, itemsOf, lineH, listRows, typeOf, type Box } from "../layout";
-import { fit, textWidth, wrap, type Face } from "../text";
+import { fit, textWidth, wrap } from "../text";
 import { itemText, type Item } from "../types";
-import { guessIcon } from "../vocab";
 import { hasIcon, Icon } from "./icons";
+import { crossBox, dark, hint, iconFor, ink, line, Ln, mid, mid1, muted, paper, Para, R, s, soft, squiggle, star, SW, T, THIN, white, type DrawCtx, type Drawn } from "./prims";
+import { Cursor, drawMore, menuPanel, Spin, withState } from "./more";
 
-export interface Drawn { shape?: ReactNode; words?: ReactNode }
-export interface DrawCtx {
-  /** Resolve an image `src` to an href (already sketchified). */
-  asset?: (src: string, raw?: boolean, crop?: number[]) => string | undefined;
-  /** Unique prefix for clip-path ids. */
-  uid: string;
-}
+export type { DrawCtx, Drawn };
 
-const ink: string = C.ink, paper: string = C.paper, white: string = "#ffffff", soft: string = C.g1, mid: string = C.g2, line: string = C.g4, muted: string = C.g7, hint: string = C.g5, dark: string = C.g8;
-const SW = 2.4, THIN = 1.7;
-const s = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
-const fontOf = (face: Face) => (face === "title" ? "Permanent Marker" : "Patrick Hand");
-
-function T({ x, y, text, size, face = "hand", fill = ink, anchor = "start", underline }: { x: number; y: number; text: string; size: number; face?: Face; fill?: string; anchor?: "start" | "middle" | "end"; underline?: boolean }) {
-  return <text x={x} y={y} fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor} textDecoration={underline ? "underline" : undefined}>{richLines(text, [plainText(text)], fill, size)[0]}</text>;
-}
-/** Single line, vertically centered in (y, h). */
-const mid1 = (y: number, h: number, size: number) => y + h / 2 + size * 0.34;
-
-function Para({ x, y, w, text, size, face = "hand", fill = ink, align = "start", maxLines }: { x: number; y: number; w: number; text: string; size: number; face?: Face; fill?: string; align?: string; maxLines?: number }) {
-  let ls = wrap(text, face, size, Math.max(10, w));
-  if (maxLines && ls.length > maxLines) { ls = ls.slice(0, maxLines); ls[maxLines - 1] = fit(ls[maxLines - 1] + "…", face, size, w); }
-  const lh = lineH(size, face);
-  const ax = align === "center" ? x + w / 2 : align === "end" ? x + w : x;
-  const anchor = align === "center" ? "middle" : align === "end" ? "end" : "start";
-  const base = y + (lh - size) / 2 + size * 0.84;
-  return <text fontFamily={fontOf(face)} fontSize={size} fill={fill} textAnchor={anchor}>{richLines(text, ls, fill, size).map((l, i) => <tspan key={i} x={ax} y={base + i * lh}>{l}</tspan>)}</text>;
-}
-
-const R = (x: number, y: number, w: number, h: number, o: { rx?: number; fill?: string; stroke?: string; sw?: number; dash?: string } = {}) =>
-  <rect key={`r${x},${y},${w},${h}`} x={x} y={y} width={Math.max(0, w)} height={Math.max(0, h)} rx={o.rx ?? 0} fill={o.fill ?? "none"} stroke={o.stroke === undefined ? ink : o.stroke} strokeWidth={o.sw ?? SW} strokeDasharray={o.dash} />;
-const Ln = (x1: number, y1: number, x2: number, y2: number, stroke = ink, sw = SW) => <line key={`l${x1},${y1},${x2},${y2}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" />;
-
-/** A gentle hand-drawn squiggle standing in for a line of text. */
-function squiggle(x: number, y: number, w: number) {
-  let d = `M${x} ${y}`;
-  for (let i = 0, px = x; px < x + w - 1; i++) { const step = Math.min(14, x + w - px); d += ` q${step / 2} ${i % 2 ? 2.2 : -2.2} ${step} 0`; px += step; }
-  return <path d={d} fill="none" stroke={line} strokeWidth={3} strokeLinecap="round" />;
-}
-
-function crossBox(b: { x: number; y: number; w: number; h: number }, rx: number, uid: string, label?: string) {
-  const id = `${uid}-x`;
-  return {
-    shape: <g>
-      <clipPath id={id}><rect x={b.x} y={b.y} width={b.w} height={b.h} rx={rx} /></clipPath>
-      {R(b.x, b.y, b.w, b.h, { rx, fill: soft, stroke: "none" })}
-      <g clipPath={`url(#${id})`}>{Ln(b.x, b.y, b.x + b.w, b.y + b.h, line, THIN)}{Ln(b.x + b.w, b.y, b.x, b.y + b.h, line, THIN)}</g>
-      {R(b.x, b.y, b.w, b.h, { rx })}
-    </g>,
-    words: label && b.h > 26 && b.w > 50 ? (() => {
-      const t = fit(label, "hand", 15, b.w - 24), tw = textWidth(t, "hand", 15);
-      return <g>{R(b.x + b.w / 2 - tw / 2 - 8, b.y + b.h / 2 - 12, tw + 16, 24, { rx: 12, fill: paper, stroke: "none" })}<T x={b.x + b.w / 2} y={b.y + b.h / 2 + 5} text={t} size={15} fill={muted} anchor="middle" /></g>;
-    })() : undefined,
-  };
-}
-
-function iconFor(it: Item): string {
-  const o = typeof it === "string" ? {} : it;
-  return hasIcon(o.icon) ? (o.icon as string) : guessIcon(itemText(it));
-}
-
-function star(cx: number, cy: number, r: number) {
-  const pts: string[] = [];
-  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5; const rr = i % 2 ? r * 0.45 : r; pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`); }
-  return pts.join(" ");
-}
-
+/** Draw a component, then show its interaction `state` (hover, focus, disabled...). */
 export function draw(b: Box, ctx: DrawCtx): Drawn {
+  return withState(b, drawBase(b, ctx));
+}
+
+function drawBase(b: Box, ctx: DrawCtx): Drawn {
   const n = b.node, { x, y, w, h } = b;
   const text = s(n.text);
   const uid = `${ctx.uid}-${b.key.replace(/[^a-z0-9]/gi, "_") || "root"}`;
+  const state = s(n.state);
   switch (typeOf(n)) {
     // ---------- text ----------
     case "title": return { words: <Para x={x} y={y} w={w} text={text} size={FS.title} face="title" align={s(n.align)} /> };
@@ -106,25 +47,32 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     case "button": {
       const v = s(n.variant) || "secondary";
       const size = FS.button[s(n.size)] ?? 18;
+      const hover = state === "hover";
       const fg = v === "primary" ? paper : ink;
-      const label = fit(text, "hand", size, w - (n.icon ? 46 : 16));
-      const tw = textWidth(label, "hand", size) + (n.icon ? 28 : 0);
+      const icon = s(n.icon) || (v === "danger" ? "trash" : "");
+      const label = fit(text, "hand", size, w - (icon ? 46 : 16));
+      const tw = textWidth(label, "hand", size) + (icon ? 28 : 0);
       const tx = x + (w - tw) / 2;
-      const words = <g>
-        {n.icon ? <Icon name={s(n.icon)} x={tx} y={y + h / 2 - 11} size={22} color={fg} /> : null}
-        <T x={tx + (n.icon ? 28 : 0)} y={mid1(y, h, size)} text={label} size={size} fill={fg} />
-        {v === "text" ? Ln(tx, y + h / 2 + size * 0.5, tx + tw, y + h / 2 + size * 0.5, ink, 1.4) : null}
-      </g>;
+      const words = state === "loading"
+        ? <g><Spin cx={x + w / 2 - textWidth(label, "hand", size) / 2 - 6} cy={y + h / 2} color={fg} /><T x={x + w / 2 + 12} y={mid1(y, h, size)} text={label} size={size} fill={fg} anchor="middle" /></g>
+        : <g>
+          {icon ? <Icon name={icon} x={tx} y={y + h / 2 - 11} size={22} color={fg} /> : null}
+          <T x={tx + (icon ? 28 : 0)} y={mid1(y, h, size)} text={label} size={size} fill={fg} />
+          {v === "text" ? Ln(tx, y + h / 2 + size * 0.5, tx + tw, y + h / 2 + size * 0.5, ink, hover ? 2.4 : 1.4) : null}
+        </g>;
       if (v === "text") return { words };
       const rx = Math.min(12, h / 2);
-      return { shape: R(x, y, w, h, { rx, fill: v === "primary" ? ink : v === "outline" ? white : mid }), words };
+      // hover lifts the fill a shade; danger is a heavy outline with a trash can
+      if (state === "pressed" && v === "primary") return { shape: <g>{R(x, y, w, h, { rx, fill: ink })}{R(x + 4, y + 4, w - 8, h - 8, { rx: Math.max(2, rx - 4), stroke: C.g5, sw: 1.6 })}</g>, words: <g transform="translate(0 1.5)">{words}</g> };
+      const fill = v === "primary" ? (hover ? C.g7 : ink) : v === "outline" || v === "danger" ? (hover ? soft : white) : hover ? soft : mid;
+      return { shape: R(x, y, w, h, { rx, fill, sw: v === "danger" ? 3.4 : SW }), words };
     }
     case "icon-button": {
       const v = s(n.variant) || "plain";
       const r = Math.min(w, h) / 2;
       const cx = x + w / 2, cy = y + h / 2;
       return {
-        shape: v === "plain" ? undefined : <circle cx={cx} cy={cy} r={r - 1} fill={v === "filled" ? mid : white} stroke={ink} strokeWidth={THIN} />,
+        shape: v === "plain" ? (state === "hover" || state === "pressed" ? <circle cx={cx} cy={cy} r={r - 1} fill={soft} stroke="none" /> : undefined) : <circle cx={cx} cy={cy} r={r - 1} fill={v === "filled" ? mid : white} stroke={ink} strokeWidth={THIN} />,
         words: <g>
           <Icon name={s(n.icon)} x={cx - 12} y={cy - 12} />
           {n.badge ? <g><circle cx={cx + 11} cy={cy - 11} r={9} fill={ink} /><T x={cx + 11} y={cy - 7} text={s(n.badge).slice(0, 2)} size={12} fill={paper} anchor="middle" /></g> : null}
@@ -134,37 +82,52 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     case "input": case "select": case "textarea": {
       const lab = n.label ? 26 : 0;
       const isArea = typeOf(n) === "textarea";
-      const bh = isArea ? h - lab : 46;
+      const below = n.error || n.help ? 22 : 0;
+      const bh = isArea ? h - lab - below : 46;
       const by = y + lab;
       const val = s(n.value), ph = s(n.hint);
       const ix = n.icon ? x + 44 : x + 14;
       const tw = w - (ix - x) - (typeOf(n) === "select" ? 40 : 14);
+      const open = typeOf(n) === "select" && state === "open";
+      const heavy = !!n.error || state === "error" || state === "focus" || open;
+      const pop = open ? menuPanel(x, by + bh + 6, w, itemsOf(n).length ? itemsOf(n) : [val || ph || "Option"], val) : undefined;
       return {
-        shape: R(x, by, w, bh, { rx: 8, fill: white, sw: n.error ? 3 : SW }),
+        shape: R(x, by, w, bh, { rx: 8, fill: state === "disabled" ? soft : white, sw: heavy ? 3.2 : SW }),
+        popShape: pop?.shape, popWords: pop?.words,
         words: <g>
-          {n.label ? <T x={x + 2} y={y + 18} text={fit(s(n.label), "hand", FS.label, w)} size={FS.label} fill={dark} /> : null}
+          {n.label ? <T x={x + 2} y={y + 18} text={fit(s(n.label) + (n.required ? " *" : ""), "hand", FS.label, w)} size={FS.label} fill={dark} /> : null}
+          {state === "focus" && !isArea ? Ln(ix + textWidth(fit(val || "", "hand", 17, tw), "hand", 17) + (val ? 3 : 0), by + 13, ix + textWidth(fit(val || "", "hand", 17, tw), "hand", 17) + (val ? 3 : 0), by + bh - 13, ink, 1.6) : null}
+          {n.help && !n.error ? <T x={x + 2} y={by + bh + 17} text={fit(s(n.help), "hand", 14, w)} size={14} fill={muted} /> : null}
           {n.icon ? <Icon name={s(n.icon)} x={x + 12} y={by + bh / 2 - 12} color={muted} /> : null}
           {isArea
             ? <Para x={ix} y={by + 10} w={tw} text={val || ph} size={16} fill={val ? ink : hint} maxLines={Math.max(1, Math.floor((bh - 16) / 21))} />
             : <T x={ix} y={mid1(by, bh, 17)} text={fit(val || ph, "hand", 17, tw)} size={17} fill={val ? ink : hint} />}
-          {typeOf(n) === "select" ? <Icon name="chevron-down" x={x + w - 34} y={by + bh / 2 - 12} /> : null}
+          {typeOf(n) === "select" ? <Icon name={open ? "chevron-up" : "chevron-down"} x={x + w - 34} y={by + bh / 2 - 12} /> : null}
           {n.error ? <g><Icon name="alert" x={x} y={by + bh + 3} size={16} /><T x={x + 22} y={by + bh + 17} text={fit(s(n.error), "hand", 15, w - 24)} size={15} /></g> : null}
         </g>,
       };
     }
-    case "search": return {
-      shape: R(x, y, w, h, { rx: h / 2, fill: soft }),
+    case "search": {
+      const pop = state === "open" ? menuPanel(x, y + h + 6, w, (itemsOf(n).length ? itemsOf(n) : ["Suggestion", "Suggestion", "Suggestion"]).map((it) => (typeof it === "string" ? { text: it, icon: "search" } : { icon: "search", ...it }))) : undefined;
+      return {
+      popShape: pop?.shape, popWords: pop?.words,
+      shape: R(x, y, w, h, { rx: h / 2, fill: state === "focus" || state === "open" ? white : soft, sw: state === "focus" || state === "open" ? 3.2 : SW }),
       words: <g><Icon name="search" x={x + 14} y={y + h / 2 - 12} color={muted} /><T x={x + 46} y={mid1(y, h, 17)} text={fit(s(n.value) || s(n.hint) || "Search", "hand", 17, w - 60)} size={17} fill={n.value ? ink : hint} /></g>,
-    };
+      };
+    }
     case "checkbox": return {
-      shape: <g>{R(x + 1, y + 3, 22, 22, { rx: 5, fill: n.checked ? mid : white, sw: THIN + 0.3 })}{n.checked ? <path d={`M${x + 6} ${y + 14} l4 4.5 l9 -10`} fill="none" stroke={ink} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" /> : null}</g>,
+      shape: <g>{R(x + 1, y + 3, 22, 22, { rx: 5, fill: n.checked || n.mixed ? mid : white, sw: state === "error" ? 3.2 : THIN + 0.3 })}{n.mixed ? Ln(x + 6.5, y + 14, x + 17.5, y + 14, ink, 2.8) : n.checked ? <path d={`M${x + 6} ${y + 14} l4 4.5 l9 -10`} fill="none" stroke={ink} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" /> : null}</g>,
       words: <Para x={x + 34} y={y + Math.max(0, (28 - lineH(FS.item)) / 2)} w={w - 34} text={text} size={FS.item} />,
     };
     case "radio": {
       const its = itemsOf(n);
+      // down: one option per line; right: options in a row
+      let ox = 0;
+      const at = its.map((it) => { if (n.dir !== "right") return { x: 0, y: 0 }; const p = { x: ox, y: 0 }; ox += textWidth(itemText(it), "hand", FS.item) + 58; return p; });
+      const px = (i: number) => x + at[i].x, py = (i: number) => y + (n.dir === "right" ? 0 : i * 36);
       return {
-        shape: <g>{its.map((it, i) => <g key={i}><circle cx={x + 11} cy={y + i * 36 + 18} r={10} fill={white} stroke={ink} strokeWidth={THIN + 0.3} />{itemText(it) === s(n.value) ? <circle cx={x + 11} cy={y + i * 36 + 18} r={5} fill={ink} /> : null}</g>)}</g>,
-        words: <g>{its.map((it, i) => <T key={i} x={x + 32} y={mid1(y + i * 36, 36, FS.item)} text={fit(itemText(it), "hand", FS.item, w - 34)} size={FS.item} />)}</g>,
+        shape: <g>{its.map((it, i) => <g key={i}><circle cx={px(i) + 11} cy={py(i) + 18} r={10} fill={white} stroke={ink} strokeWidth={THIN + 0.3} />{itemText(it) === s(n.value) ? <circle cx={px(i) + 11} cy={py(i) + 18} r={5} fill={ink} /> : null}</g>)}</g>,
+        words: <g>{its.map((it, i) => <T key={i} x={px(i) + 32} y={mid1(py(i), 36, FS.item)} text={fit(itemText(it), "hand", FS.item, n.dir === "right" ? 400 : w - 34)} size={FS.item} />)}</g>,
       };
     }
     case "toggle": {
@@ -178,8 +141,10 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
       const lab = n.label ? 26 : 0;
       const v = Math.max(0, Math.min(1, typeof n.value === "number" ? n.value : 0.5));
       const cy = y + lab + 12, kx = x + 12 + (w - 24) * v;
+      const to = typeof n.to === "number" ? Math.max(0, Math.min(1, n.to)) : undefined;
+      const k2 = to === undefined ? undefined : x + 12 + (w - 24) * to;
       return {
-        shape: <g>{Ln(x + 12, cy, x + w - 12, cy, line, 4)}{Ln(x + 12, cy, kx, cy, ink, 4)}<circle cx={kx} cy={cy} r={11} fill={paper} stroke={ink} strokeWidth={THIN + 0.3} /></g>,
+        shape: <g>{Ln(x + 12, cy, x + w - 12, cy, line, 4)}{k2 === undefined ? Ln(x + 12, cy, kx, cy, ink, 4) : Ln(Math.min(kx, k2), cy, Math.max(kx, k2), cy, ink, 4)}<circle cx={kx} cy={cy} r={11} fill={paper} stroke={ink} strokeWidth={THIN + 0.3} />{k2 === undefined ? null : <circle cx={k2} cy={cy} r={11} fill={paper} stroke={ink} strokeWidth={THIN + 0.3} />}</g>,
         words: n.label ? <T x={x + 2} y={y + 18} text={s(n.label)} size={FS.label} fill={dark} /> : undefined,
       };
     }
@@ -200,7 +165,10 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
       const act = new Set(Array.isArray(n.active) ? n.active.map(String) : n.active ? [String(n.active)] : []);
       return {
         shape: <g>{rs.map((r, i) => <g key={i}>{R(x + r.x, y + r.y, r.w, r.h, { rx: 17, fill: act.has(itemText(its[i])) ? ink : white, sw: THIN })}</g>)}</g>,
-        words: <g>{rs.map((r, i) => <T key={i} x={x + r.x + r.w / 2} y={mid1(y + r.y, r.h, 15)} text={fit(itemText(its[i]), "hand", 15, r.w - 16)} size={15} anchor="middle" fill={act.has(itemText(its[i])) ? paper : ink} />)}</g>,
+        words: <g>{rs.map((r, i) => <g key={i}>
+          <T x={x + r.x + (r.w - (n.close ? 18 : 0)) / 2} y={mid1(y + r.y, r.h, 15)} text={fit(itemText(its[i]), "hand", 15, r.w - 16 - (n.close ? 18 : 0))} size={15} anchor="middle" fill={act.has(itemText(its[i])) ? paper : ink} />
+          {n.close ? <T x={x + r.x + r.w - 16} y={mid1(y + r.y, r.h, 16)} text="×" size={17} anchor="middle" fill={act.has(itemText(its[i])) ? paper : muted} /> : null}
+        </g>)}</g>,
       };
     }
 
@@ -232,9 +200,27 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     }
     case "tabs": {
       const its = itemsOf(n), rs = itemRects(n, w, h);
+      const boxed = n.kind === "boxed";
+      const on = (it: Item) => itemText(it) === s(n.active);
+      const ist = (it: Item) => (typeof it === "string" ? "" : s(it.state));
       return {
-        shape: <g>{Ln(x, y + h, x + w, y + h, line, THIN)}{its.map((it, i) => itemText(it) === s(n.active) ? <g key={i}>{Ln(x + rs[i].x + 10, y + h - 1, x + rs[i].x + rs[i].w - 10, y + h - 1, ink, 3.5)}</g> : null)}</g>,
-        words: <g>{its.map((it, i) => <T key={i} x={x + rs[i].x + rs[i].w / 2} y={mid1(y, h, 16)} text={fit(itemText(it), "hand", 16, rs[i].w - 8)} size={16} anchor="middle" fill={itemText(it) === s(n.active) ? ink : muted} />)}</g>,
+        shape: <g>
+          {Ln(x, y + h, x + w, y + h, line, THIN)}
+          {its.map((it, i) => boxed
+            ? (on(it) ? <path key={i} d={`M${x + rs[i].x + 2} ${y + h} V${y + 8} Q${x + rs[i].x + 2} ${y + 2} ${x + rs[i].x + 8} ${y + 2} H${x + rs[i].x + rs[i].w - 8} Q${x + rs[i].x + rs[i].w - 2} ${y + 2} ${x + rs[i].x + rs[i].w - 2} ${y + 8} V${y + h}`} fill={paper} stroke={ink} strokeWidth={THIN + 0.3} /> : <g key={i}>{R(x + rs[i].x + 2, y + 6, rs[i].w - 4, h - 6, { rx: 6, fill: ist(it) === "hover" ? mid : soft, stroke: "none" })}</g>)
+            : on(it) ? <g key={i}>{Ln(x + rs[i].x + 10, y + h - 1, x + rs[i].x + rs[i].w - 10, y + h - 1, ink, 3.5)}</g>
+            : ist(it) === "hover" ? <g key={i}>{Ln(x + rs[i].x + 10, y + h - 1, x + rs[i].x + rs[i].w - 10, y + h - 1, line, 3.5)}</g> : null)}
+        </g>,
+        words: <g>{its.map((it, i) => {
+          const badge = typeof it === "string" ? "" : s(it.badge);
+          const lw = textWidth(fit(itemText(it), "hand", 16, rs[i].w - 8 - (badge ? 28 : 0)), "hand", 16);
+          const cx = x + rs[i].x + rs[i].w / 2 - (badge ? 13 : 0);
+          return <g key={i} opacity={ist(it) === "disabled" ? 0.4 : 1}>
+            <T x={cx} y={mid1(y, h, 16)} text={fit(itemText(it), "hand", 16, rs[i].w - 8 - (badge ? 28 : 0))} size={16} anchor="middle" fill={on(it) ? ink : muted} />
+            {badge ? <g><rect x={cx + lw / 2 + 6} y={y + h / 2 - 10} width={Math.max(20, textWidth(badge, "hand", 13) + 10)} height={20} rx={10} fill={on(it) ? ink : mid} /><T x={cx + lw / 2 + 6 + Math.max(20, textWidth(badge, "hand", 13) + 10) / 2} y={y + h / 2 + 4} text={badge} size={13} fill={on(it) ? paper : ink} anchor="middle" /></g> : null}
+            {ist(it) === "hover" ? <Cursor x={cx + 6} y={y + h / 2 + 2} /> : null}
+          </g>;
+        })}</g>,
       };
     }
     case "breadcrumbs": {
@@ -257,10 +243,20 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
       const its = itemsOf(n), rs = itemRects(n, w, h);
       const ai = its.findIndex((it) => itemText(it) === s(n.active));
       return {
-        shape: <g>{R(x, y, w, h, { fill: soft, stroke: "none" })}{Ln(x + w, y, x + w, y + h, line, THIN)}{ai >= 0 ? R(x + rs[ai].x, y + rs[ai].y, rs[ai].w, rs[ai].h, { rx: 8, fill: paper, sw: THIN }) : null}</g>,
+        shape: <g>{R(x, y, w, h, { fill: soft, stroke: "none" })}{Ln(x + w, y, x + w, y + h, line, THIN)}{ai >= 0 ? R(x + rs[ai].x, y + rs[ai].y, rs[ai].w, rs[ai].h, { rx: 8, fill: paper, sw: THIN }) : null}
+          {its.map((it, i) => i !== ai && typeof it === "object" && it.state === "hover" ? <g key={i}>{R(x + rs[i].x, y + rs[i].y, rs[i].w, rs[i].h, { rx: 8, fill: mid, stroke: "none" })}</g> : null)}</g>,
         words: <g>
-          {n.title ? <T x={x + 20} y={y + 40} text={fit(s(n.title), "title", 20, w - 40)} size={20} face="title" /> : null}
-          {its.map((it, i) => <g key={i}><Icon name={iconFor(it)} x={x + rs[i].x + 12} y={y + rs[i].y + 8} color={i === ai ? ink : muted} /><T x={x + rs[i].x + 46} y={mid1(y + rs[i].y, rs[i].h, 17)} text={fit(itemText(it), "hand", 17, rs[i].w - 56)} size={17} fill={i === ai ? ink : dark} /></g>)}
+          {n.title && !n.collapsed ? <T x={x + 20} y={y + 40} text={fit(s(n.title), "title", 20, w - 40)} size={20} face="title" /> : null}
+          {its.map((it, i) => {
+            const o = typeof it === "string" ? {} : it, badge = s(o.badge);
+            const ix = n.collapsed ? x + rs[i].x + rs[i].w / 2 - 12 : x + rs[i].x + 12;
+            return <g key={i} opacity={o.state === "disabled" ? 0.4 : 1}>
+              <Icon name={iconFor(it)} x={ix} y={y + rs[i].y + 8} color={i === ai ? ink : muted} />
+              {!n.collapsed ? <T x={x + rs[i].x + 46} y={mid1(y + rs[i].y, rs[i].h, 17)} text={fit(itemText(it), "hand", 17, rs[i].w - 56 - (badge ? 34 : 0))} size={17} fill={i === ai ? ink : dark} /> : null}
+              {badge ? (n.collapsed ? <circle cx={ix + 22} cy={y + rs[i].y + 9} r={5} fill={ink} /> : <g><rect x={x + rs[i].x + rs[i].w - 38} y={y + rs[i].y + 10} width={30} height={20} rx={10} fill={ink} /><T x={x + rs[i].x + rs[i].w - 23} y={y + rs[i].y + 25} text={badge.slice(0, 3)} size={13} fill={paper} anchor="middle" /></g>) : null}
+              {o.state === "hover" ? <Cursor x={x + rs[i].x + Math.min(120, rs[i].w * 0.6)} y={y + rs[i].y + 22} /> : null}
+            </g>;
+          })}
         </g>,
       };
     }
@@ -297,18 +293,23 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     case "icon": return { words: <Icon name={s(n.icon)} x={x + (w - Math.min(w, h)) / 2} y={y} size={Math.min(w, h)} /> };
     case "list": {
       const rows = listRows(n, w), cards = !!n.cards, dividers = n.dividers !== false && !cards;
+      const sel = (it: Item) => (typeof it === "object" && it.state === "selected") || (n.selected !== undefined && itemText(it) === s(n.selected));
+      const ist = (it: Item) => (typeof it === "string" ? "" : s(it.state));
+      const cb = n.select ? 36 : 0;
       return {
         shape: <g>{rows.map((r, i) => {
           const o = typeof r.item === "string" ? {} : r.item;
+          const hot = sel(r.item) ? mid : ist(r.item) === "hover" ? soft : undefined;
           return <g key={i}>
-            {cards ? R(x, y + r.y, w, r.h, { rx: 10, fill: white, sw: THIN }) : null}
+            {cards ? R(x, y + r.y, w, r.h, { rx: 10, fill: hot ?? white, sw: sel(r.item) ? 3 : THIN }) : hot ? R(x - 6, y + r.y + 2, w + 12, r.h - 4, { rx: 8, fill: hot, stroke: "none" }) : null}
+            {n.select ? <g>{R(x + (cards ? 12 : 2), y + r.y + r.h / 2 - 11, 22, 22, { rx: 5, fill: sel(r.item) ? mid : white, sw: THIN + 0.3 })}{sel(r.item) ? <path d={`M${x + (cards ? 17 : 7)} ${y + r.y + r.h / 2} l4 4.5 l9 -10`} fill="none" stroke={ink} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" /> : null}</g> : null}
             {dividers && i < rows.length - 1 ? Ln(x, y + r.y + r.h, x + w, y + r.y + r.h, mid, THIN) : null}
-            {o.image ? crossBox({ x: x + (cards ? 10 : 0), y: y + r.y + 10, w: 56, h: 56 }, 8, `${uid}-${i}`).shape : null}
+            {o.image ? crossBox({ x: x + (cards ? 10 : 0) + cb, y: y + r.y + 10, w: 56, h: 56 }, 8, `${uid}-${i}`).shape : null}
           </g>;
         })}</g>,
         words: <g>{rows.map((r, i) => {
           const o = typeof r.item === "string" ? { title: r.item } : r.item;
-          const inset = cards ? 12 : 0;
+          const inset = (cards ? 12 : 0) + cb;
           const left = x + inset + (o.image ? 70 : hasIcon(o.icon) ? 38 : 0);
           const meta = s(o.meta);
           const chev = !!(n.chevrons || o.goes);
@@ -316,7 +317,8 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
           const metaW = meta ? textWidth(meta, "hand", 15) + 10 : 0;
           const title = itemText(o as Item);
           const ty = o.subtitle ? y + r.y + r.h / 2 - 4 : mid1(y + r.y, r.h, FS.item);
-          return <g key={i}>
+          return <g key={i} opacity={ist(r.item) === "disabled" ? 0.4 : 1}>
+            {ist(r.item) === "hover" ? <Cursor x={x + w * 0.6} y={y + r.y + r.h * 0.55} /> : null}
             {hasIcon(o.icon) ? <Icon name={s(o.icon)} x={x + inset + 2} y={y + r.y + r.h / 2 - 12} /> : null}
             <T x={left} y={ty} text={fit(title, "hand", FS.item, right - left - metaW)} size={FS.item} />
             {o.subtitle ? <T x={left} y={ty + 20} text={fit(s(o.subtitle), "hand", 14, right - left - metaW)} size={14} fill={muted} /> : null}
@@ -329,12 +331,28 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     case "table": {
       const cols = Array.isArray(n.columns) ? n.columns.map(String) : ["Column", "Column"];
       const rows = Array.isArray(n.rows) ? (n.rows as unknown[][]) : [];
-      const cw = w / Math.max(1, cols.length);
+      // optional checkbox column on the left and ⋮ column on the right
+      const lx = n.select ? 44 : 0, rx = n.actions ? 44 : 0;
+      const cw = (w - lx - rx) / Math.max(1, cols.length);
+      const picked = new Set(Array.isArray(n.selected) ? n.selected.map((v) => Number(v)) : []);
+      const box = (bx: number, by: number, on: boolean, some = false) => <g>{R(bx, by, 20, 20, { rx: 5, fill: on || some ? mid : white, sw: THIN + 0.2 })}{some ? Ln(bx + 5, by + 10, bx + 15, by + 10, ink, 2.6) : on ? <path d={`M${bx + 4.5} ${by + 10} l4 4.5 l8 -9`} fill="none" stroke={ink} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" /> : null}</g>;
+      const all = rows.length > 0 && rows.every((_, i) => picked.has(i + 1));
       return {
-        shape: <g>{R(x, y, w, 40, { rx: 0, fill: soft, stroke: "none" })}{rows.map((_, i) => Ln(x, y + 40 + (i + 1) * 40, x + w, y + 40 + (i + 1) * 40, mid, THIN))}{Ln(x, y + 40, x + w, y + 40, ink, THIN)}{R(x, y, w, h, { rx: 6, sw: THIN + 0.3 })}</g>,
+        shape: <g>
+          {R(x, y, w, 40, { rx: 0, fill: soft, stroke: "none" })}
+          {rows.map((_, i) => picked.has(i + 1) ? <g key={`p${i}`}>{R(x, y + 40 + i * 40, w, 40, { fill: mid, stroke: "none" })}</g> : n.striped && i % 2 ? <g key={`p${i}`}>{R(x, y + 40 + i * 40, w, 40, { fill: soft, stroke: "none" })}</g> : null)}
+          {rows.map((_, i) => Ln(x, y + 40 + (i + 1) * 40, x + w, y + 40 + (i + 1) * 40, mid, THIN))}
+          {Ln(x, y + 40, x + w, y + 40, ink, THIN)}
+          {n.select ? <g>{box(x + 12, y + 10, all, !all && picked.size > 0)}{rows.map((_, i) => <g key={i}>{box(x + 12, y + 50 + i * 40, picked.has(i + 1))}</g>)}</g> : null}
+          {R(x, y, w, h, { rx: 6, sw: THIN + 0.3 })}
+        </g>,
         words: <g>
-          {cols.map((c, j) => <T key={j} x={x + j * cw + 12} y={mid1(y, 40, 15)} text={fit(c, "hand", 15, cw - 18)} size={15} fill={dark} />)}
-          {rows.map((r, i) => (Array.isArray(r) ? r : []).slice(0, cols.length).map((cell, j) => <T key={`${i}-${j}`} x={x + j * cw + 12} y={mid1(y + 40 + i * 40, 40, 16)} text={fit(String(cell), "hand", 16, cw - 18)} size={16} />))}
+          {cols.map((c, j) => {
+            const sorted = s(n.sort) === c;
+            return <g key={j}><T x={x + lx + j * cw + 12} y={mid1(y, 40, 15)} text={fit(c, "hand", 15, cw - 18 - (sorted ? 20 : 0))} size={15} fill={dark} />{sorted ? <Icon name="arrow-down" x={x + lx + j * cw + 16 + Math.min(cw - 40, textWidth(c, "hand", 15))} y={y + 12} size={16} /> : null}</g>;
+          })}
+          {rows.map((r, i) => (Array.isArray(r) ? r : []).slice(0, cols.length).map((cell, j) => <T key={`${i}-${j}`} x={x + lx + j * cw + 12} y={mid1(y + 40 + i * 40, 40, 16)} text={fit(String(cell), "hand", 16, cw - 18)} size={16} />))}
+          {n.actions ? rows.map((_, i) => <Icon key={`a${i}`} name="more" x={x + w - 34} y={y + 49 + i * 40} size={22} color={muted} />) : null}
         </g>,
       };
     }
@@ -436,6 +454,13 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     case "progress": {
       const lab = n.label ? 26 : 0;
       const v = Math.max(0, Math.min(1, typeof n.value === "number" ? n.value : 0.4));
+      if (n.kind === "circle") {
+        const cx = x + 36, cy = y + lab + 36, r = 30, a = -Math.PI / 2 + v * Math.PI * 2;
+        return {
+          shape: <g><circle cx={cx} cy={cy} r={r} fill="none" stroke={mid} strokeWidth={8} />{v >= 0.999 ? <circle cx={cx} cy={cy} r={r} fill="none" stroke={ink} strokeWidth={8} /> : v > 0 ? <path d={`M${cx} ${cy - r} A${r} ${r} 0 ${v > 0.5 ? 1 : 0} 1 ${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`} fill="none" stroke={ink} strokeWidth={8} strokeLinecap="round" /> : null}</g>,
+          words: <g>{n.label ? <T x={x + 2} y={y + 18} text={fit(s(n.label), "hand", FS.label, w)} size={FS.label} fill={dark} /> : null}<T x={cx} y={cy + 6} text={`${Math.round(v * 100)}%`} size={17} anchor="middle" /></g>,
+        };
+      }
       return {
         shape: <g>{R(x, y + lab, w, 12, { rx: 6, fill: white, sw: THIN + 0.3 })}{v > 0 ? R(x, y + lab, Math.max(12, w * v), 12, { rx: 6, fill: C.g5, sw: THIN + 0.3 }) : null}</g>,
         words: n.label ? <T x={x + 2} y={y + 18} text={fit(s(n.label), "hand", FS.label, w)} size={FS.label} fill={dark} /> : undefined,
@@ -444,6 +469,19 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     case "steps": {
       const its = Array.isArray(n.items) ? n.items.map(String) : ["Step", "Step", "Step"];
       const cur = typeof n.current === "number" ? n.current : 1;
+      if (n.vertical) {
+        const cy = (i: number) => y + 14 + i * 56;
+        return {
+          shape: <g>
+            {its.slice(1).map((_, i) => Ln(x + 14, cy(i) + 15, x + 14, cy(i + 1) - 15, i + 1 < cur ? ink : line, i + 1 < cur ? SW : THIN))}
+            {its.map((_, i) => <circle key={i} cx={x + 14} cy={cy(i)} r={13} fill={i + 1 === cur ? ink : i + 1 < cur ? mid : white} stroke={ink} strokeWidth={THIN + 0.3} />)}
+          </g>,
+          words: <g>{its.map((t, i) => <g key={i}>
+            {i + 1 < cur ? <Icon name="check" x={x + 5} y={cy(i) - 9} size={18} /> : <T x={x + 14} y={cy(i) + 5} text={String(i + 1)} size={15} anchor="middle" fill={i + 1 === cur ? paper : ink} />}
+            <T x={x + 40} y={cy(i) + 6} text={fit(t, "hand", 17, w - 44)} size={17} fill={i + 1 === cur ? ink : muted} />
+          </g>)}</g>,
+        };
+      }
       const k = its.length, sx = (i: number) => x + (k === 1 ? w / 2 : 16 + (i * (w - 32)) / (k - 1));
       return {
         shape: <g>
@@ -472,7 +510,7 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
     }
 
     // ---------- containers ----------
-    case "card": return { shape: n.flat ? R(x, y, w, h, { rx: 12, fill: soft, stroke: "none" }) : R(x, y, w, h, { rx: 12, fill: white }) };
+    case "card": return { shape: n.flat ? R(x, y, w, h, { rx: 12, fill: state === "hover" ? mid : soft, stroke: "none" }) : R(x, y, w, h, { rx: 12, fill: state === "hover" ? soft : white }) };
     case "section": return {
       words: <g>
         {n.title ? <T x={x} y={y + 21} text={fit(s(n.title), "title", 17, w - (n.action ? textWidth(s(n.action), "hand", 15) + 16 : 0))} size={17} face="title" /> : null}
@@ -488,7 +526,7 @@ export function draw(b: Box, ctx: DrawCtx): Drawn {
       words: n.title ? <T x={x + 20} y={y + 42} text={fit(s(n.title), "title", 20, w - 40)} size={20} face="title" /> : undefined,
     };
   }
-  return {};
+  return drawMore(b, ctx);
 }
 
 /** Phone status bar: time, signal, wifi, battery. */

@@ -4,8 +4,12 @@
  * Produces a flat list of boxes (one per element, parents before children) that the renderer, the editor's
  * hit-testing and the link arrows all share.
  */
-import { COMPONENTS, guessIcon, type Pin } from "./vocab";
-import { deviceSize, itemGoes, itemText, resolveNode, type Item, type Nudge, type Screen, type WireframeFile, type WNode } from "./types";
+import { COMPONENTS, guessIcon, ICONS, type Pin } from "./vocab";
+
+const ICON_SET = new Set<string>(ICONS);
+/** Is this toolbar/menu item just an icon name? */
+export const isIconItem = (it: Item) => (typeof it === "string" ? ICON_SET.has(it) : !(it.text ?? it.title) && !!it.icon);
+import { deviceSize, itemGoes, itemText, itemTitle, resolveNode, type Item, type Nudge, type Screen, type WireframeFile, type WNode } from "./types";
 import { textWidth, wrap, type Face } from "./text";
 
 export const FS = { title: 28, heading: 20, text: { sm: 15, md: 17, lg: 20 } as Record<string, number>, label: 15, link: 17, button: { sm: 15, md: 18, lg: 19 } as Record<string, number>, small: 13, tab: 12, item: 17 };
@@ -45,6 +49,8 @@ export interface Layout {
   insets: { top: number; bottom: number };
   phone: boolean;
   statusbar: boolean;
+  /** Browser tabs and address bar across the top (the screen's `url`). */
+  browser?: { y: number; url: string; title: string };
   notes: { n: number; key: string; text: string }[];
 }
 
@@ -55,8 +61,12 @@ const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String
 const isContainer = (n: WNode) => !!def(n).container;
 export const itemsOf = (n: WNode): Item[] => (Array.isArray(n.items) ? (n.items as Item[]) : []);
 
-const PAD: Record<string, number> = { card: 14, sheet: 20, dialog: 20 };
-const GAP: Record<string, number> = { row: 8, card: 8, section: 10, grid: 12, sheet: 12, dialog: 12, stack: 12 };
+const PAD: Record<string, number> = { card: 14, sheet: 20, dialog: 20, browser: 20, window: 16, drawer: 20, popover: 14 };
+const GAP: Record<string, number> = { row: 8, card: 8, section: 10, grid: 12, sheet: 12, dialog: 12, stack: 12, browser: 14, window: 12, drawer: 14, popover: 8 };
+
+/** Browser chrome: a tab strip and the address bar. */
+export const BROWSER_BAR = 84;
+export const WINDOW_BAR = 40;
 export const padOf = (n: WNode) => num(n.pad, PAD[typeOf(n)] ?? 0);
 export const gapOf = (n: WNode) => num(n.gap, GAP[typeOf(n)] ?? 12);
 export const dirOf = (n: WNode): "down" | "right" => (typeOf(n) === "row" ? "right" : typeOf(n) === "stack" && n.dir === "right" ? "right" : "down");
@@ -67,6 +77,10 @@ export function headerOf(n: WNode): number {
   if (t === "section") return n.title || n.action ? 28 + gapOf(n) : 0;
   if (t === "sheet") return 18 + (n.title ? 34 : 0);
   if (t === "dialog") return n.title ? 36 : 0;
+  if (t === "browser") return BROWSER_BAR;
+  if (t === "window") return WINDOW_BAR;
+  if (t === "drawer") return n.title ? 44 : 8;
+  if (t === "popover") return (n.title ? 30 : 0) + 10;
   return 0;
 }
 
@@ -96,7 +110,7 @@ export function hugW(raw: WNode, file?: WireframeFile): number {
     case "icon-button": return 44;
     case "input": case "textarea": case "select": case "search": return 240;
     case "checkbox": return 32 + tw(text, FS.item);
-    case "radio": return 34 + Math.max(0, ...itemsOf(n).map((i) => tw(itemText(i), FS.item)));
+    case "radio": return n.dir === "right" ? itemsOf(n).reduce((a, i) => a + tw(itemText(i), FS.item) + 58, -24) : 34 + Math.max(0, ...itemsOf(n).map((i) => tw(itemText(i), FS.item)));
     case "toggle": return tw(text, FS.item) + 72;
     case "slider": case "progress": return 200;
     case "stepper": return 112;
@@ -106,7 +120,7 @@ export function hugW(raw: WNode, file?: WireframeFile): number {
     case "breadcrumbs": return itemsOf(n).reduce((a, i) => a + tw(itemText(i), 15) + 22, -22);
     case "pagination": { const p = num(n.pages, 5); return (p + 2) * 36 + (p + 1) * 6; }
     case "dots": return num(n.count, 3) * 16 - 6;
-    case "sidebar": return 240;
+    case "sidebar": return n.collapsed ? 64 : 240;
     case "image": return typeof n.height === "number" ? n.height * aspect(n.aspect) : 140;
     case "avatar": return num(n.size, 40);
     case "icon": return num(n.size, 24);
@@ -121,6 +135,14 @@ export function hugW(raw: WNode, file?: WireframeFile): number {
     case "steps": return 300;
     case "spinner": return 28 + (n.label ? 10 + tw(str(n.label), FS.label) : 0);
     case "sketch": return Math.max(120, tw(str(n.label), FS.label) + 32);
+    case "banner": case "empty-state": case "skeleton": case "date-picker": case "tag-input": case "file-upload": case "details": case "tree": case "timeline": case "code": case "accordion": case "toolbar": return 300;
+    case "stat": return 180;
+    case "split-button": return tw(text, 18) + 40 + 44;
+    case "fab": return n.text ? tw(text, 17) + 72 : 56;
+    case "calendar": return 280;
+    case "avatar-group": { const k = (Array.isArray(n.items) ? n.items.length : 3) + (num(n.more, 0) ? 1 : 0); return 40 + Math.max(0, k - 1) * 28; }
+    case "menu": return Math.min(320, Math.max(180, ...itemsOf(n).map((i) => tw(itemText(i), 16) + 76 + (typeof i === "object" && i.shortcut ? tw(str(i.shortcut), 14) + 16 : 0))));
+    case "tooltip": return tw(text, 15) + 24;
   }
   if (isContainer(n)) {
     const p = padOf(n) * 2;
@@ -137,6 +159,8 @@ export function widthOf(n: WNode, avail: number, file?: WireframeFile): number {
   if (typeof n.width === "number") return Math.min(n.width, avail);
   const mode = n.width === "hug" || n.width === "fill" ? n.width : def(n).defaultWidth;
   if (typeOf(n) === "dialog") return Math.min(avail, 400);
+  if (typeOf(n) === "drawer") return Math.min(avail, Math.max(260, Math.min(360, avail * 0.85)));
+  if (typeOf(n) === "popover" && n.width === undefined) return Math.min(avail, 280);
   return mode === "hug" ? Math.min(Math.ceil(hugW(n, file)), avail) : avail;
 }
 
@@ -156,11 +180,67 @@ export function listRows(n: WNode, w: number): (Rect & { item: Item })[] {
   });
 }
 
+/** A dropdown/menu panel's rows: "-" (or { divider: true }) is a thin divider. */
+export const MENU_PAD = 6;
+export function menuRows(items: Item[], w: number): (Rect & { item: Item; divider: boolean })[] {
+  let y = MENU_PAD;
+  return items.map((item) => {
+    const divider = item === "-" || (typeof item === "object" && !!item.divider);
+    const r = { x: MENU_PAD, y, w: w - MENU_PAD * 2, h: divider ? 11 : 40, item, divider };
+    y += r.h;
+    return r;
+  });
+}
+export const menuH = (items: Item[]) => { const r = menuRows(items, 100); return r.length ? r[r.length - 1].y + r[r.length - 1].h + MENU_PAD : 52; };
+
+/** Tree items flattened to visible rows, with their depth. */
+export function treeRows(items: Item[], depth = 0, out: { item: Item; depth: number; kids: boolean }[] = []) {
+  for (const it of items) {
+    const o = typeof it === "string" ? {} : it;
+    const kids = Array.isArray(o.children) ? (o.children as Item[]) : [];
+    out.push({ item: it, depth, kids: kids.length > 0 });
+    if (kids.length && o.open) treeRows(kids, depth + 1, out);
+  }
+  return out;
+}
+
+export function accordionRows(n: WNode, w: number): (Rect & { item: Item; open: boolean; textH: number })[] {
+  const open = new Set(Array.isArray(n.open) ? n.open.map(String) : n.open ? [String(n.open)] : []);
+  let y = 0;
+  return itemsOf(n).map((item) => {
+    const o = typeof item === "string" ? { title: item } : item;
+    const isOpen = open.has(itemTitle(o as Item));
+    const body = isOpen ? str(o.text) : "";
+    const textH = isOpen ? (body ? lines(body, 16, w - 32) * lineH(16) : 2 * lineH(16)) + 16 : 0;
+    const r = { x: 0, y, w, h: 52 + textH, item, open: isOpen, textH };
+    y += r.h;
+    return r;
+  });
+}
+
+export function timelineRows(n: WNode, w: number): (Rect & { item: Item })[] {
+  let y = 0;
+  return itemsOf(n).map((item) => {
+    const o = typeof item === "string" ? {} : item;
+    const h = 30 + (o.text ? lines(str(o.text), 15, w - 40) * lineH(15) + 2 : 0) + 18;
+    const r = { x: 0, y, w, h, item };
+    y += h;
+    return r;
+  });
+}
+
+export function detailRows(n: WNode): { label: string; value: string }[] {
+  return itemsOf(n).map((it) => {
+    if (typeof it === "string") { const i = it.indexOf(":"); return i > 0 ? { label: it.slice(0, i).trim(), value: it.slice(i + 1).trim() } : { label: it, value: "" }; }
+    return { label: str(it.label ?? it.title ?? it.text), value: str(it.value ?? it.subtitle ?? "") };
+  });
+}
+
 export function chipRects(n: WNode, w: number): Rect[] {
   const out: Rect[] = [];
   let x = 0, y = 0;
   for (const it of itemsOf(n)) {
-    const cw = Math.min(w, tw(itemText(it), 15) + 30);
+    const cw = Math.min(w, tw(itemText(it), 15) + 30 + (n.close ? 18 : 0));
     if (x > 0 && x + cw > w) { x = 0; y += 34 + 8; }
     out.push({ x, y, w: cw, h: 34 });
     x += cw + 8;
@@ -177,7 +257,17 @@ export function itemRects(n: WNode, w: number, h: number): Rect[] {
     case "chips": return chipRects(n, w);
     case "tabbar": return its.map((_, i) => ({ x: (w / k) * i, y: 0, w: w / k, h: 64 }));
     case "tabs": case "segmented": return its.map((_, i) => ({ x: (w / k) * i, y: 0, w: w / k, h }));
-    case "sidebar": return its.map((_, i) => ({ x: 10, y: (n.title ? 64 : 16) + i * 44, w: w - 20, h: 40 }));
+    case "menu": return menuRows(its, w).map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h }));
+    case "toolbar": {
+      let x = 0;
+      return its.map((it) => {
+        const icon = isIconItem(it);
+        const r = { x, y: (h - 40) / 2, w: icon ? 40 : tw(itemText(it), 16) + 32 + (typeof it === "object" && it.icon ? 26 : 0), h: 40 };
+        x += r.w + 8;
+        return r;
+      });
+    }
+    case "sidebar": return its.map((_, i) => ({ x: n.collapsed ? 8 : 10, y: (n.title && !n.collapsed ? 64 : 16) + i * 44, w: w - (n.collapsed ? 16 : 20), h: 40 }));
     case "breadcrumbs": {
       let x = 0;
       return its.map((it) => { const r = { x, y: 0, w: tw(itemText(it), 15), h }; x += r.w + 22; return r; });
@@ -196,6 +286,9 @@ export function itemRects(n: WNode, w: number, h: number): Rect[] {
 
 // ---------- heights ----------
 
+/** A month calendar: header, weekday letters, six weeks. */
+export const CAL_H = 44 + 26 + 6 * 36 + 8;
+
 export function heightOf(raw: WNode, w: number, file?: WireframeFile): number {
   const n = file ? resolveNode(file, raw) : raw;
   if (typeof n.height === "number" && typeOf(n) !== "spacer") return n.height;
@@ -211,11 +304,11 @@ export function heightOf(raw: WNode, w: number, file?: WireframeFile): number {
     case "badge": return 26;
     case "button": return n.variant === "text" ? 32 : ({ sm: 38, md: 48, lg: 56 } as Record<string, number>)[str(n.size)] ?? 48;
     case "icon-button": return 44;
-    case "input": case "select": return lab + 46 + (n.error ? 22 : 0);
-    case "textarea": return lab + num(n.rows, 3) * 22 + 24;
+    case "input": case "select": return lab + 46 + (n.error || n.help ? 22 : 0);
+    case "textarea": return lab + num(n.rows, 3) * 22 + 24 + (n.error || n.help ? 22 : 0);
     case "search": return 44;
     case "checkbox": return Math.max(28, lines(text, FS.item, w - 34) * lineH(FS.item));
-    case "radio": return itemsOf(n).length * 36;
+    case "radio": return n.dir === "right" ? 36 : itemsOf(n).length * 36;
     case "toggle": return Math.max(32, lines(text, FS.item, w - 72) * lineH(FS.item));
     case "slider": return lab + 24;
     case "stepper": return 38;
@@ -234,6 +327,7 @@ export function heightOf(raw: WNode, w: number, file?: WireframeFile): number {
     case "icon": return num(n.size, 24);
     case "list": { const r = listRows(n, w); return r.length ? r[r.length - 1].y + r[r.length - 1].h : 52; }
     case "table": return 40 + (Array.isArray(n.rows) ? n.rows.length : 2) * 40;
+    // (the select column and actions column sit inside the same width)
     case "chart": return 160 + (n.label ? 24 : 0);
     case "map": return 180 + (n.label ? 24 : 0);
     case "video": return Math.round((w * 9) / 16) + (n.label ? 24 : 0);
@@ -243,10 +337,29 @@ export function heightOf(raw: WNode, w: number, file?: WireframeFile): number {
     case "keyboard": return 260;
     case "alert": return 24 + (n.title ? 22 : 0) + lines(text, 16, w - 58) * lineH(16);
     case "toast": return 48;
-    case "progress": return (n.label ? 26 : 0) + 12;
-    case "steps": return 58;
+    case "progress": return n.kind === "circle" ? 72 + (n.label ? 26 : 0) : (n.label ? 26 : 0) + 12;
+    case "steps": return n.vertical ? Math.max(1, Array.isArray(n.items) ? n.items.length : 3) * 56 - 20 : 58;
     case "spinner": return 28;
     case "sketch": return 120;
+    case "banner": return 48;
+    case "empty-state": return 64 + 14 + (n.title ? lines(str(n.title), 20, w - 32, "title") * lineH(20, "title") + 6 : 0) + (text ? lines(text, 16, Math.min(w, 340) - 16) * lineH(16) + 6 : 0) + (n.button ? 60 : 0);
+    case "skeleton": return (n.image ? Math.round(w * 0.42) + 14 : 0) + Math.max(n.avatar ? 44 : 0, num(n.lines, 3) * 22);
+    case "split-button": return 48;
+    case "fab": return 56;
+    case "date-picker": return lab + 46 + (n.error ? 22 : 0);
+    case "tag-input": return lab + 46;
+    case "file-upload": return lab + 110 + (Array.isArray(n.files) ? n.files.length * 40 + 6 : 0);
+    case "calendar": return CAL_H;
+    case "details": { const k = Math.max(1, num(n.columns, 1)); return Math.ceil(detailRows(n).length / k) * 52; }
+    case "stat": return 104;
+    case "avatar-group": return 40;
+    case "tree": return treeRows(itemsOf(n)).length * 36;
+    case "timeline": { const r = timelineRows(n, w); return r.length ? r[r.length - 1].y + r[r.length - 1].h - 14 : 40; }
+    case "code": return 24 + (text ? text.split("\n").length : num(n.lines, 4)) * 21;
+    case "accordion": { const r = accordionRows(n, w); return r.length ? r[r.length - 1].y + r[r.length - 1].h : 52; }
+    case "toolbar": return 56;
+    case "menu": return menuH(itemsOf(n));
+    case "tooltip": return 36 + 8;
   }
   if (isContainer(n)) return containerHeight(n, w, file);
   return 40;
@@ -423,7 +536,10 @@ export function layoutScreen(file: WireframeFile, screenId: string): Layout {
   const dev = deviceSize(file, screen);
   const phone = dev.chrome === "phone";
   const statusbar = screen.statusbar ?? (phone || dev.chrome === "tablet");
-  const top = statusbar ? (phone ? 47 : 24) : 0;
+  const bar = statusbar ? (phone ? 47 : 24) : 0;
+  // a screen with a `url` sits in a browser: its tabs and address bar take the top
+  const browser = typeof screen.url === "string" ? { y: bar, url: screen.url, title: screen.title ?? "" } : undefined;
+  const top = bar + (browser ? BROWSER_BAR : 0);
   const home = statusbar && phone ? 34 : 0;
   const W = dev.w;
   const pad = num(screen.pad, dev.w >= 1000 ? 32 : dev.w < 250 ? 10 : 16);
@@ -477,14 +593,16 @@ export function layoutScreen(file: WireframeFile, screenId: string): Layout {
     if (pin.endsWith("left")) x = pad;
     if (pin === "center" || pin === "left" || pin === "right") y = (H - h) / 2;
     if (pin === "center") x = (W - w) / 2;
+    let hh = h;
+    if (t === "drawer") { x = c.side === "left" ? 0 : W - w; y = top; hh = H - top; }
     ctx.plane = plane++;
-    const scrim = t === "sheet" || t === "dialog";
+    const scrim = t === "sheet" || t === "dialog" || t === "drawer";
     if (isContainer(c)) {
-      emit(ctx, c, [...screenPath, "children", i], x, y, w, h, 1, { pinned: true, scrim });
-      place(ctx, { ...c }, [...screenPath, "children", i], x, y, w, h, 0);
+      emit(ctx, c, [...screenPath, "children", i], x, y, w, hh, 1, { pinned: true, scrim });
+      place(ctx, { ...c }, [...screenPath, "children", i], x, y, w, hh, 0);
       // place() at depth 0 doesn't emit the container itself; its children are depth 1. Bump them under it.
       for (const b of out) if (b.plane === ctx.plane && b.key.startsWith(`${[...screenPath, "children", i].slice(2).join("/")}/`)) b.depth += 1;
-    } else emit(ctx, c, [...screenPath, "children", i], x, y, w, h, 1, { pinned: true });
+    } else emit(ctx, c, [...screenPath, "children", i], x, y, w, hh, 1, { pinned: true });
     if (pin.includes("bottom") && !scrim) stackBottom = Math.min(stackBottom, y + pad - 8);
   }
 
@@ -531,7 +649,7 @@ export function layoutScreen(file: WireframeFile, screenId: string): Layout {
   if (screen.note) notes.push({ n: 0, key: "", text: screen.note });
   for (const b of out) if (typeof b.node.note === "string" && b.node.note && !b.hidden) notes.push({ n: notes.filter((x) => x.n > 0).length + 1, key: b.key, text: b.node.note });
 
-  return { screen: screenId, w: W, h: H, boxes: out, items: items.filter((it) => !out.find((b) => b.key === it.parent)?.hidden), overflow, insets: { top, bottom: bottomInset }, phone, statusbar, notes };
+  return { browser, screen: screenId, w: W, h: H, boxes: out, items: items.filter((it) => !out.find((b) => b.key === it.parent)?.hidden), overflow, insets: { top, bottom: bottomInset }, phone, statusbar, notes };
 }
 
 /** Every link on a screen: element or item → screen id. */

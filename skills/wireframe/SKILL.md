@@ -71,6 +71,17 @@ path. **Below, `wf` is short for that whole command.**
   screen with that `device` and `"versionOf": "<original id>"`, and adapt its layout (a phone list becomes a desktop
   grid, a tab bar becomes a top nav). Long web pages: `"scroll": true` on the screen. A desktop app layout:
   `"dir": "right"` on the screen with a `sidebar` first and a `stack` for the main column.
+- **Show the states.** Controls take `"state"`: `hover` (a pointer over it), `pressed`, `focus` (a focus ring),
+  `disabled`, `error`, `loading` (a spinner in the button), `selected`, and `open` for things that drop down
+  (`select`, `search` suggestions, `date-picker`'s calendar, `split-button`'s menu), drawn over the screen. Items
+  in lists, menus, tabs, trees and accordions take a `state` too (`hover`, `selected`, `disabled`). Use them
+  when the moment matters (the disabled Pay button until a size is picked, the error on a bad card number), or
+  lay several copies side by side to spec a component's states. Leave `state` out for the normal look.
+- **Websites in a browser.** `"url": "cornercoffee.com/menu"` on a screen draws browser tabs and an address bar
+  across its top (the screen's `title` is the tab). The `browser` component does the same around a page inside a
+  screen, and `window` frames a desktop app.
+- **Overlays float.** `menu`, `popover` and `tooltip` go where you place them (usually `"pin"` or a `row`
+  beside what they point at); `drawer` slides in from the side over a dimmed screen; `dialog` and `sheet` as before.
 - **Stay low-fi.** Grays only; there are no color or font options on purpose. Images are crossed boxes with a
   label unless the designer gives you a picture (`"src"`), which gets sketchified to match
   (`"sketch": false` shows it as it is). Designers can drop, paste or upload pictures in the editor too.

@@ -83,12 +83,18 @@ Or just click around yourself. Your edits and the agent's edits land in the same
 
 ## What's in the box
 
-![About 50 components](docs/components-df8b153.png)
+![About 75 components](docs/components-ef9c061.png)
 
-- **About 50 components.** Navbars, tab bars, sidebars and site headers. Buttons, inputs, selects, checkboxes,
-  toggles, sliders, steppers and chips. Lists, tables, cards, images, avatars, charts, maps and video. Alerts,
-  toasts, progress, steps, bottom sheets and dialogs. Plus 175 little icons, from arrows and carts to
-  trains, pills, wallets and fingerprints.
+- **About 75 components.** Navbars, tab bars, sidebars, site headers and toolbars. Buttons, split buttons,
+  floating buttons, inputs, selects, date pickers, tag fields, file drop zones, checkboxes, toggles, sliders and
+  chips. Lists, tables, cards, trees, timelines, accordions, calendars, stats, code blocks, charts, maps and video.
+  Alerts, banners, toasts, progress, skeletons, empty states, menus, popovers, tooltips, drawers, bottom sheets and
+  dialogs. Plus 175 little icons, from arrows and carts to trains, pills, wallets and fingerprints.
+- **Every state.** Hover, pressed, focus, disabled, error, loading and selected, plus dropdowns, menus and date
+  pickers drawn open over the screen. Spec a button's states side by side, or show the Pay button disabled until a
+  size is picked.
+- **Websites in a real-looking browser.** Give a screen a web address and it gets browser tabs and an address
+  bar with that URL. Change the address in the editor any time. There's a desktop app window too.
 - **A sketch box for everything else.** A dashed box with a label for the bits that are yours alone. The checker
   nudges your agent if a screen is mostly sketch boxes.
 - **Real flows.** Buttons, list rows, tabs and menu items link to other screens. Shared pieces like the tab bar
@@ -100,6 +106,8 @@ Or just click around yourself. Your edits and the agent's edits land in the same
   is, your call). Hit **Crop…** to show just the part you want.
 - **Bold, italic, underline and strikethrough** in any text: `**bold**`, `*italic*`, `__underline__`, `~~$6.50~~`,
   or Cmd+B, Cmd+I and Cmd+U in the editor.
+
+![Every state, a web page in a browser, and more pieces](docs/states-bff9f4d.png)
 
 ### Any size, side by side
 

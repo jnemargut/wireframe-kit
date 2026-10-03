@@ -38,6 +38,8 @@ export interface Screen {
   statusbar?: boolean;
   /** Per-screen device override. */
   device?: DeviceName | { w: number; h: number };
+  /** Show the screen inside a web browser with this address in the address bar. */
+  url?: string;
   /** The body drawn around this screen (default: picked from the device). */
   chrome?: Chrome;
   /** This screen is another device's version of that screen (e.g. the desktop "menu"). */
@@ -88,5 +90,7 @@ export function resolveNode(file: WireframeFile, node: WNode): WNode {
   return { ...base, ...rest };
 }
 
+/** An item's heading: its title first (accordion sections, timeline events keep `text` for the body). */
+export const itemTitle = (it: Item): string => (typeof it === "string" ? it : String(it.title ?? it.text ?? ""));
 export const itemText = (it: Item): string => (typeof it === "string" ? it : String(it.text ?? it.title ?? ""));
 export const itemGoes = (it: Item): string | undefined => (typeof it === "string" ? undefined : it.goes);

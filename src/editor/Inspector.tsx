@@ -379,6 +379,14 @@ function ScreenSize({ doc, screen, layouts, a }: { doc: WireframeFile; screen: s
           {CHROMES.map((c) => <option key={c} value={c}>{c === "none" ? "no body" : c}</option>)}
         </select>
       </label>
+      <label className="field inline" title="Show this screen inside a web browser, with its tabs and address bar">
+        <span>In a browser</span><input type="checkbox" checked={typeof sc.url === "string"} onChange={(e) => a.setProp(["screens", screen], "url", e.target.checked ? "example.com" : undefined)} />
+      </label>
+      {typeof sc.url === "string" ? (
+        <label className="field"><span>Address</span>
+          <input value={sc.url} placeholder="example.com/page" onChange={(e) => a.setProp(["screens", screen], "url", e.target.value)} />
+        </label>
+      ) : null}
       <p className="hint">Mix sizes freely: every screen can be its own device. "Make a version" copies this screen as another device, right under it; ask your agent to adapt the layout. You can also drag the screen's corner on the canvas.</p>
     </>
   );

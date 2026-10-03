@@ -12,9 +12,10 @@ export type { Issue, Result };
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const TOP = ["$schema", "title", "device", "start", "shared", "screens", "layout", "canvas"];
-const SCREEN = ["title", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "chrome", "versionOf", "note", "children", "shapes", "markup"];
+const SCREEN = ["title", "url", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "chrome", "versionOf", "note", "children", "shapes", "markup"];
 const SHAPE_KEYS = ["id", "type", "points", "fill", "text", "color", "weight", "size"];
-const ITEM = ["text", "title", "subtitle", "meta", "icon", "image", "goes"];
+const ITEM = ["text", "title", "subtitle", "meta", "icon", "image", "goes", "state", "badge", "shortcut", "checked", "danger", "divider", "open", "children", "label", "value"];
+const ITEM_STATES = ["normal", "hover", "selected", "disabled"];
 
 export function validate(input: unknown): Result {
   const errors: Issue[] = [];
@@ -79,6 +80,8 @@ export function validate(input: unknown): Result {
           if (!isObj(it)) { err(`${path}[${i}]`, "must be text or an object."); return; }
           for (const k of Object.keys(it)) if (!ITEM.includes(k)) unknownKey(`${path}[${i}]`, k, ITEM, "an item");
           goesOk(`${path}[${i}].goes`, it.goes);
+          if (it.state !== undefined && !ITEM_STATES.includes(String(it.state))) err(`${path}[${i}].state`, `An item's state is one of ${ITEM_STATES.join(", ")}.`);
+          if (it.children !== undefined && !Array.isArray(it.children)) err(`${path}[${i}].children`, "must be a list of items (a tree's sub-items).");
           if (it.icon !== undefined && !(ICONS as readonly string[]).includes(String(it.icon))) { const s = suggest(String(it.icon), ICONS); err(`${path}[${i}].icon`, `"${String(it.icon)}" isn't an icon.`, s ? `Did you mean "${s}"?` : "Run `wf vocab icons`."); }
         });
         if (type === "navbar") v.forEach((it, i) => { const name = typeof it === "string" ? it : isObj(it) ? it.icon : undefined; if (name !== undefined && !(ICONS as readonly string[]).includes(String(name))) { const s = suggest(String(name), ICONS); err(`${path}[${i}]`, `"${String(name)}" isn't an icon.`, s ? `Did you mean "${s}"?` : "Navbar actions are icon names."); } });

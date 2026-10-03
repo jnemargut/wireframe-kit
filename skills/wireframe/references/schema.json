@@ -300,6 +300,15 @@
           "description": "No border, just a soft fill.",
           "type": "boolean"
         },
+        "state": {
+          "description": "Draw it in a state: hover (the pointer is over it), selected (outlined), disabled (grayed out). Default normal.",
+          "enum": [
+            "normal",
+            "hover",
+            "selected",
+            "disabled"
+          ]
+        },
         "title": {
           "description": "The section heading.",
           "type": [
@@ -350,12 +359,13 @@
           "type": "boolean"
         },
         "variant": {
-          "description": "primary = the main action (dark). Default secondary.",
+          "description": "primary = the main action (dark). danger = destructive. Default secondary.",
           "enum": [
             "primary",
             "secondary",
             "outline",
-            "text"
+            "text",
+            "danger"
           ]
         },
         "icon": {
@@ -573,36 +583,57 @@
             "number"
           ]
         },
+        "help": {
+          "description": "Helper text below.",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "required": {
+          "description": "Mark the label with *.",
+          "type": "boolean"
+        },
         "rows": {
           "description": "Visible rows (default 3).",
           "type": "number",
           "minimum": 1,
           "maximum": 20
         },
-        "checked": {
-          "description": "Ticked.",
-          "type": "boolean"
-        },
         "items": {
-          "description": "The options.",
-          "oneOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
+          "description": "Suggestions shown when it's open (state \"open\").",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
                 "type": [
                   "string",
                   "number"
                 ]
+              },
+              {
+                "$ref": "#/definitions/item"
               }
-            }
-          ]
+            ]
+          }
+        },
+        "checked": {
+          "description": "Ticked.",
+          "type": "boolean"
+        },
+        "mixed": {
+          "description": "Partly ticked (a dash): some of a group is chosen.",
+          "type": "boolean"
         },
         "on": {
           "description": "Switched on.",
           "type": "boolean"
+        },
+        "to": {
+          "description": "A second handle for a range, 0 to 1.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "active": {
           "description": "The selected one.",
@@ -610,6 +641,10 @@
             "string",
             "number"
           ]
+        },
+        "close": {
+          "description": "An × on each chip (removable filters).",
+          "type": "boolean"
         },
         "back": {
           "description": "Show a back arrow (goes back).",
@@ -636,6 +671,13 @@
           "description": "Big title on its own line, left-aligned.",
           "type": "boolean"
         },
+        "kind": {
+          "description": "Underlined (default) or boxed tabs.",
+          "enum": [
+            "line",
+            "boxed"
+          ]
+        },
         "pages": {
           "description": "How many pages (default 5).",
           "type": "number",
@@ -652,6 +694,10 @@
           "type": "number",
           "minimum": 1,
           "maximum": 12
+        },
+        "collapsed": {
+          "description": "Icons only (a narrow rail).",
+          "type": "boolean"
         },
         "button": {
           "description": "A button on the far right, e.g. \"Order now\".",
@@ -705,13 +751,172 @@
           "description": "Each row as its own card.",
           "type": "boolean"
         },
-        "kind": {
-          "description": "Chart type (default bar).",
+        "select": {
+          "description": "A checkbox on every row (rows with state selected are ticked).",
+          "type": "boolean"
+        },
+        "selected": {
+          "description": "The title of the selected row (highlighted).",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "sort": {
+          "description": "The column it's sorted by (an arrow in the heading).",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "striped": {
+          "description": "Shade every other row.",
+          "type": "boolean"
+        },
+        "vertical": {
+          "description": "Stack the steps down the screen (a wizard's side list).",
+          "type": "boolean"
+        },
+        "avatar": {
+          "description": "A round picture on the left.",
+          "type": "boolean"
+        },
+        "image": {
+          "description": "A picture block on top.",
+          "type": "boolean"
+        },
+        "day": {
+          "description": "The chosen day of the month in the open calendar.",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 31
+        },
+        "today": {
+          "description": "Today's day in the open calendar (ringed).",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 31
+        },
+        "month": {
+          "description": "Month shown in the open calendar, e.g. \"October 2026\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "files": {
+          "description": "Files already added.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              }
+            }
+          ]
+        },
+        "start": {
+          "description": "Weekday the 1st falls on, 0 = Sunday (default 4).",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "delta": {
+          "description": "The change, e.g. \"+12%\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "trend": {
+          "description": "Arrow direction for the change.",
           "enum": [
-            "bar",
-            "line",
-            "pie",
-            "donut"
+            "up",
+            "down",
+            "flat"
+          ]
+        },
+        "more": {
+          "description": "The +N count after them.",
+          "type": "number",
+          "minimum": 0
+        },
+        "numbers": {
+          "description": "Line numbers.",
+          "type": "boolean"
+        },
+        "copy": {
+          "description": "A copy button in the corner.",
+          "type": "boolean"
+        },
+        "open": {
+          "description": "Titles of the expanded sections.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              }
+            }
+          ]
+        },
+        "url": {
+          "description": "The address shown, e.g. \"cornercoffee.com/menu\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "tabs": {
+          "description": "More tabs beside it.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              }
+            }
+          ]
+        },
+        "search": {
+          "description": "Search placeholder (shows a search field).",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "side": {
+          "description": "Which side (default right).",
+          "enum": [
+            "right",
+            "left"
+          ]
+        },
+        "arrow": {
+          "description": "Which edge the arrow is on (default top).",
+          "enum": [
+            "top",
+            "bottom",
+            "left",
+            "right"
           ]
         },
         "type": {
@@ -768,6 +973,29 @@
             "progress",
             "steps",
             "spinner",
+            "banner",
+            "empty-state",
+            "skeleton",
+            "split-button",
+            "fab",
+            "date-picker",
+            "tag-input",
+            "file-upload",
+            "calendar",
+            "details",
+            "stat",
+            "avatar-group",
+            "tree",
+            "timeline",
+            "code",
+            "accordion",
+            "browser",
+            "window",
+            "toolbar",
+            "menu",
+            "drawer",
+            "popover",
+            "tooltip",
             "sketch"
           ]
         },
