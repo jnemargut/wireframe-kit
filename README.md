@@ -149,6 +149,11 @@ builds stays in tidy stacks, and anything you drag in lands exactly where you dr
 - Alt+↑ / Alt+↓ move things up and down the stack. Cmd+] / Cmd+[ (add Shift for all the way) change what's in front.
   Delete deletes, Cmd+Z undoes.
 - Drawings come in thin, normal or thick lines, with a solid white fill (no outline) for covering something up.
+- Shift+click to select a few things on a screen, then line them up or space them out from the side panel. Dragging
+  a screen, a freely placed thing or a drawing shows guides and snaps when edges or middles line up (hold Option to
+  drag freely).
+- **Group** (Cmd+G) ties things together, **Lock** (Shift+Cmd+L) keeps a screen or a thing put, and **Copy style** /
+  **Paste style** (Option+Cmd+C / V) move colors and lines from one drawing to another.
 - Rename a screen and every link to it follows along.
 - **Copy for agent** copies a pointer to whatever you clicked, so you can tell your agent "make this a toggle instead."
 
@@ -165,7 +170,9 @@ Links glow orange when you hover; Back, ← or the navbar arrow take you back.
 
 **Export**
 
-The whole flow as one PNG or SVG, a PDF with the flow plus a page per screen, or one PNG per screen. Each
+A **clickable prototype** in one HTML file: send it to anyone, they open it in a browser and click through
+your flow (back, start over, and a "show links" button for the lost). Or the whole flow as one PNG or SVG, a PDF
+with the flow plus a page per screen, or one PNG per screen. Each
 screen PNG carries its own source inside it, and **Copy as image** puts a screen on your clipboard for Slack,
 Figma, or a Flowchart Kit board (where it lands as a live card).
 
@@ -180,7 +187,7 @@ wf vocab                 # every component, by category
 wf vocab list            # one component: its props and an example
 wf validate my.wireframe.json
 wf dev my.wireframe.json
-wf export my.wireframe.json --png --pdf
+wf export my.wireframe.json --png --pdf --html
 wf render my.wireframe.json          # screen PNGs for storyboards
 wf source my.status.png              # get the wireframe back out of a PNG
 ```

@@ -1,3 +1,4 @@
+import { toPrototypeHTML } from "../prototype";
 import { createServer } from "node:http";
 import { existsSync, mkdirSync, readFileSync, watch, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
@@ -98,6 +99,10 @@ export async function dev(file: string, o: DevOptions) {
         if (fmt === "pdf") {
           res.writeHead(200, { "content-type": "application/pdf", "content-disposition": `attachment; filename="${stem}.pdf"` });
           return res.end(Buffer.from(await toPDF(d, abs)));
+        }
+        if (fmt === "html") {
+          res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-disposition": `attachment; filename="${stem}.html"` });
+          return res.end(toPrototypeHTML(d, abs));
         }
         if (fmt === "svg") {
           res.writeHead(200, { "content-type": "image/svg+xml", "content-disposition": `attachment; filename="${stem}.svg"` });

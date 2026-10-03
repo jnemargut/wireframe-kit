@@ -100,6 +100,8 @@ export const COMMON: Record<string, PropDef> = {
   height: n("Height in px (most things size themselves).", 4),
   grow: n("Take a share of leftover space along the stack (a spacer grows by default).", 0),
   note: t("A designer's note. Shown as a numbered sticky beside the screen on the canvas, never on the screen itself."),
+  locked: { type: { kind: "bool" }, doc: "Stays put until it's unlocked (editor-owned: Shift+Cmd+L)." },
+  group: { type: { kind: "text" }, doc: "Moves and selects with the others in its group (editor-owned: Cmd+G)." },
   at: { type: { kind: "point" }, doc: "Place it freely at [x, y] on the screen, outside the stacks (top-level elements only). The editor writes this when a designer drags something in; agents should prefer stacks." },
 };
 

@@ -13,8 +13,8 @@ export type { Issue, Result };
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const TOP = ["$schema", "title", "device", "start", "shared", "screens", "layout", "canvas"];
-const SCREEN = ["title", "url", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "chrome", "versionOf", "note", "children", "shapes", "markup"];
-const SHAPE_KEYS = ["id", "type", "points", "fill", "text", "color", "weight", "size"];
+const SCREEN = ["title", "url", "locked", "dir", "gap", "pad", "align", "scroll", "statusbar", "device", "chrome", "versionOf", "note", "children", "shapes", "markup"];
+const SHAPE_KEYS = ["id", "type", "points", "fill", "text", "color", "weight", "size", "rotate", "locked", "group"];
 const ITEM = ["text", "title", "subtitle", "meta", "icon", "image", "goes", "state", "badge", "shortcut", "checked", "danger", "divider", "open", "children", "label", "value"];
 const ITEM_STATES = ["normal", "hover", "selected", "disabled"];
 

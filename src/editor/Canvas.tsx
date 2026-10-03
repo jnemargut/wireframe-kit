@@ -26,6 +26,10 @@ interface Props {
   setView: (v: View | ((v: View) => View)) => void;
   sel: Sel;
   onSelect: (s: Sel) => void;
+  /** Also selected (Shift+click): more screens, or more free elements and drawings on the selected one's screen. */
+  extra?: { screen: string; key: string }[];
+  /** Shift+click: add it to the selection, or take it out. */
+  onToggle?: (s: { screen: string; key: string }) => void;
   tool: Tool;
   /** Move an element, item's parent or drawing by (dx, dy) screen px. Live while dragging, then commit. */
   onMove: (screen: string, key: string, dx: number, dy: number, commit: boolean) => void;
@@ -109,7 +113,7 @@ export function Canvas(p: Props) {
   // Chrome can leave stale pixels behind (a gray "trail") when clipped SVG changes under a drag;
   // redrawing the screen being edited from scratch on every move, and once on release, leaves nothing behind.
   const [repaint, setRepaint] = useState({ screen: "", n: 0 });
-  const drag = useRef<{ kind: "pan" | "move" | "screen" | "resize" | "draw" | "size"; sx: number; sy: number; vx: number; vy: number; screen?: string; key?: string; moved: boolean; handle?: Handle; from?: Rect; points?: [number, number][]; size?: { w: number; h: number }; pick?: string } | null>(null);
+  const drag = useRef<{ kind: "pan" | "move" | "screen" | "resize" | "draw" | "size"; sx: number; sy: number; vx: number; vy: number; screen?: string; key?: string; moved: boolean; handle?: Handle; from?: Rect; points?: [number, number][]; size?: { w: number; h: number }; pick?: string; snap?: { box: Rect; others: Rect[]; ox?: number; oy?: number }; last?: [number, number] } | null>(null);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => { if (e.code === "Space" && !(e.target as HTMLElement).closest("input,textarea,select")) { setSpace(true); e.preventDefault(); } };
@@ -153,6 +157,14 @@ export function Canvas(p: Props) {
     }
     const title = target.closest("[data-title]") as HTMLElement | null;
     const screen = screenAt(e);
+    // Shift+click: add to (or take out of) the selection, without moving anything
+    if (e.shiftKey && p.tool === "select" && p.onToggle && (title || screen)) {
+      if (title && !screen) { p.onToggle({ screen: title.dataset.title!, key: "" }); return; }
+      const pt0 = local(e, screen!);
+      const k0 = pickFrom(hitChain(p.layouts[screen!], pt0.x, pt0.y, p.doc), null, screen!, false);
+      p.onToggle({ screen: screen!, key: k0 ? (k0.startsWith("shape:") ? k0 : k0.split("#")[0]) : "" });
+      return;
+    }
     if (space || (!screen && !title)) {
       if (!space) p.onSelect(null);
       return begin(e, { kind: "pan", sx: e.clientX, sy: e.clientY, vx: p.view.x, vy: p.view.y, moved: false });
@@ -160,7 +172,8 @@ export function Canvas(p: Props) {
     if (title && !screen) {
       const s = title.dataset.title!;
       p.onSelect({ screen: s, key: "" });
-      return begin(e, { kind: "screen", sx: e.clientX, sy: e.clientY, vx: p.pos[s][0], vy: p.pos[s][1], screen: s, moved: false });
+      const others = Object.keys(p.layouts).filter((id) => id !== s && !(p.extra ?? []).some((x) => x.screen === id && !x.key)).map((id) => ({ x: p.pos[id][0], y: p.pos[id][1], w: p.layouts[id].w, h: p.layouts[id].h }));
+      return begin(e, { kind: "screen", sx: e.clientX, sy: e.clientY, vx: p.pos[s][0], vy: p.pos[s][1], screen: s, moved: false, snap: { box: { x: p.pos[s][0], y: p.pos[s][1], w: p.layouts[s].w, h: p.layouts[s].h }, others } });
     }
     const s = screen!;
     const pt = local(e, s);
@@ -172,7 +185,14 @@ export function Canvas(p: Props) {
     const held = p.sel && p.sel.screen === s && p.sel.key && chain.includes(p.sel.key) && !(e.metaKey || e.ctrlKey) ? p.sel.key : undefined;
     if (!held) p.onSelect({ screen: s, key });
     const mv = held ?? key;
-    if (mv) begin(e, { kind: "move", sx: e.clientX, sy: e.clientY, vx: 0, vy: 0, screen: s, key: mv.startsWith("shape:") ? mv : mv.split("#")[0], moved: false, pick: held ? key : undefined });
+    if (mv) {
+      const mk = mv.startsWith("shape:") ? mv : mv.split("#")[0];
+      // only things placed freely (and drawings) snap; the stacks place everything else
+      const l0 = p.layouts[s], box0 = selRectOf(p.doc, l0, mk);
+      const free = mk.startsWith("shape:") || !!l0.boxes.find((b) => b.key === mk)?.free;
+      const others = [{ x: 0, y: 0, w: l0.w, h: l0.h }, ...l0.boxes.filter((b) => b.depth === 1 && b.key !== mk && !b.hidden && !(p.extra ?? []).some((x) => x.screen === s && x.key === b.key)).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }))];
+      begin(e, { kind: "move", sx: e.clientX, sy: e.clientY, vx: 0, vy: 0, screen: s, key: mk, moved: false, pick: held ? key : undefined, snap: free && box0 ? { box: box0, others, ox: p.pos[s][0], oy: p.pos[s][1] } : undefined });
+    }
   };
 
   const resized = (d: NonNullable<typeof drag.current>, dx: number, dy: number): Rect => {
@@ -183,6 +203,26 @@ export function Canvas(p: Props) {
     if (h.includes("w")) { w = Math.max(8, f.w - dx); x = f.x + f.w - w; }
     if (h.includes("n")) { hh = Math.max(8, f.h - dy); y = f.y + f.h - hh; }
     return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(hh) };
+  };
+
+  /** Line the moving thing's edges and middle up with its neighbors' (and the screen's). Option turns it off. */
+  const [guides, setGuides] = useState<{ x?: number; y?: number; from: number; to: number }[]>([]);
+  const snapped = (d: NonNullable<typeof drag.current>, dx: number, dy: number, off: boolean): [number, number] => {
+    if (!d.snap || off) { setGuides([]); return [Math.round(dx), Math.round(dy)]; }
+    const tol = 6 / p.view.k, ox = d.snap.ox ?? 0, oy = d.snap.oy ?? 0;
+    const b = { ...d.snap.box, x: d.snap.box.x + dx, y: d.snap.box.y + dy };
+    let bx: { d: number; at: number; o: Rect } | undefined, by: { d: number; at: number; o: Rect } | undefined;
+    for (const o of d.snap.others) {
+      for (const v of [o.x, o.x + o.w / 2, o.x + o.w]) for (const m of [b.x, b.x + b.w / 2, b.x + b.w]) { const dd = v - m; if (Math.abs(dd) < tol && (!bx || Math.abs(dd) < Math.abs(bx.d))) bx = { d: dd, at: v, o }; }
+      for (const v of [o.y, o.y + o.h / 2, o.y + o.h]) for (const m of [b.y, b.y + b.h / 2, b.y + b.h]) { const dd = v - m; if (Math.abs(dd) < tol && (!by || Math.abs(dd) < Math.abs(by.d))) by = { d: dd, at: v, o }; }
+    }
+    const fx = dx + (bx?.d ?? 0), fy = dy + (by?.d ?? 0);
+    const nb = { ...d.snap.box, x: d.snap.box.x + fx, y: d.snap.box.y + fy };
+    const g: { x?: number; y?: number; from: number; to: number }[] = [];
+    if (bx) g.push({ x: ox + bx.at, from: oy + Math.min(nb.y, bx.o.y) - 12, to: oy + Math.max(nb.y + nb.h, bx.o.y + bx.o.h) + 12 });
+    if (by) g.push({ y: oy + by.at, from: ox + Math.min(nb.x, by.o.x) - 12, to: ox + Math.max(nb.x + nb.w, by.o.x + by.o.w) + 12 });
+    setGuides(g);
+    return [Math.round(fx), Math.round(fy)];
   };
 
   const onMove = (e: RPE) => {
@@ -199,8 +239,8 @@ export function Canvas(p: Props) {
     const k = p.view.k;
     if (d.kind !== "pan" && d.kind !== "screen" && d.screen) setRepaint((r) => ({ screen: d.screen!, n: r.n + 1 }));
     if (d.kind === "pan") p.setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
-    else if (d.kind === "screen") p.onMoveScreen(d.screen!, Math.round(d.vx + dx / k), Math.round(d.vy + dy / k), false);
-    else if (d.kind === "move") p.onMove(d.screen!, d.key!, Math.round(dx / k), Math.round(dy / k), false);
+    else if (d.kind === "screen") { const [sx, sy] = snapped(d, dx / k, dy / k, e.altKey); d.last = [sx, sy]; p.onMoveScreen(d.screen!, Math.round(d.vx + sx), Math.round(d.vy + sy), false); }
+    else if (d.kind === "move") { const [sx, sy] = snapped(d, dx / k, dy / k, e.altKey); d.last = [sx, sy]; p.onMove(d.screen!, d.key!, sx, sy, false); }
     else if (d.kind === "resize") p.onResize(d.screen!, d.key!, d.from!, resized(d, dx / k, dy / k), false);
     else if (d.kind === "size") p.onResize(d.screen!, "", { x: 0, y: 0, ...d.size! }, { x: 0, y: 0, w: Math.round((d.size!.w + dx / k) / 10) * 10, h: Math.round((d.size!.h + dy / k) / 10) * 10 }, false);
     else if (d.kind === "draw") {
@@ -223,8 +263,9 @@ export function Canvas(p: Props) {
     p.setDragging(false);
     if (d.screen) setRepaint((r) => ({ screen: d.screen!, n: r.n + 1 }));
     const dx = e.clientX - d.sx, dy = e.clientY - d.sy, k = p.view.k;
-    if (d.kind === "screen") p.onMoveScreen(d.screen!, Math.round(d.vx + dx / k), Math.round(d.vy + dy / k), true);
-    else if (d.kind === "move") p.onMove(d.screen!, d.key!, Math.round(dx / k), Math.round(dy / k), true);
+    setGuides([]);
+    if (d.kind === "screen") { const [sx, sy] = d.last ?? [dx / k, dy / k]; p.onMoveScreen(d.screen!, Math.round(d.vx + sx), Math.round(d.vy + sy), true); }
+    else if (d.kind === "move") { const [sx, sy] = d.last ?? [Math.round(dx / k), Math.round(dy / k)]; p.onMove(d.screen!, d.key!, sx, sy, true); }
     else if (d.kind === "resize") p.onResize(d.screen!, d.key!, d.from!, resized(d, dx / k, dy / k), true);
     else if (d.kind === "size") p.onResize(d.screen!, "", { x: 0, y: 0, ...d.size! }, { x: 0, y: 0, w: Math.round((d.size!.w + dx / k) / 10) * 10, h: Math.round((d.size!.h + dy / k) / 10) * 10 }, true);
     else if (d.kind === "draw") p.onDraw(d.screen!, p.tool, d.points!, true);
@@ -292,6 +333,12 @@ export function Canvas(p: Props) {
             {p.sel?.key ? handles.map((h) => <span key={h} className={`handle h-${h}`} data-handle={h} style={{ width: 11 / p.view.k, height: 11 / p.view.k, borderWidth: 2 / p.view.k }} />) : null}
           </div>
         ) : null}
+        {(p.extra ?? []).map((x) => { const r = rectOf(x.screen, x.key); return r ? <div key={`${x.screen}:${x.key}`} className={`sel-box extra${!x.key ? " screen" : ""}`} style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderWidth: bw * 1.25 }} /> : null; })}
+        <svg className="guides" width={1} height={1} overflow="visible" style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
+          {guides.map((g, i) => g.x !== undefined
+            ? <line key={i} x1={g.x} x2={g.x} y1={g.from} y2={g.to} stroke="#e8590c" strokeWidth={1.5 / p.view.k} strokeDasharray={`${5 / p.view.k} ${4 / p.view.k}`} />
+            : <line key={i} y1={g.y} y2={g.y} x1={g.from} x2={g.to} stroke="#e8590c" strokeWidth={1.5 / p.view.k} strokeDasharray={`${5 / p.view.k} ${4 / p.view.k}`} />)}
+        </svg>
         {screenSize && !ed ? <span className="handle h-screen" data-handle="se" title="Drag to resize the screen" style={{ left: screenSize.x - 7 / p.view.k, top: screenSize.y - 7 / p.view.k, width: 14 / p.view.k, height: 14 / p.view.k, borderWidth: 2 / p.view.k }} /> : null}
         {ed && edRect ? (
           <textarea className="inline-edit" autoFocus defaultValue={ed.value}
@@ -300,7 +347,8 @@ export function Canvas(p: Props) {
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === "Escape") p.onEditDone(null);
-              if (e.key === "Enter" && (!ed.multiline || e.metaKey || e.ctrlKey)) { e.preventDefault(); p.onEditDone((e.target as HTMLTextAreaElement).value); }
+              // Enter finishes, Shift+Enter starts a new line (the same in every kit)
+              if (e.key === "Enter" && (!ed.multiline || !e.shiftKey)) { e.preventDefault(); p.onEditDone((e.target as HTMLTextAreaElement).value); }
             }}
             onBlur={(e) => p.onEditDone(e.target.value)}
             onFocus={(e) => e.target.select()} />

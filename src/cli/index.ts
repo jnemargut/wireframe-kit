@@ -1,3 +1,4 @@
+import { toPrototypeHTML } from "../prototype";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
@@ -28,8 +29,9 @@ Usage: ${RUN} <command> [options]
   render <file>[#screen] [--size 390x844] [--scale 2]
                                   Each screen as <name>.<screen>.png next to the file (source embedded).
                                   This is what Storyboard Kit shows when a panel's screen is "x.wireframe.json#screen".
-  export <file> [--png] [--pdf] [--svg] [--screens] [--scale 1.5] [--out dir]
-                                  The whole flow as one sheet (PNG/SVG), a PDF (flow + a page per screen), or --screens
+  export <file> [--png] [--pdf] [--svg] [--html] [--screens] [--scale 1.5] [--out dir]
+                                  The whole flow as one sheet (PNG/SVG), a PDF (flow + a page per screen), --html (a
+                                  clickable prototype in one file: send it, anyone can click through), or --screens
   source <file.png>               Print the wireframe JSON embedded in a rendered PNG
   format <file>                   Rewrite the file in canonical, diff-friendly formatting
   install [--project] [--codex]   Install this skill for Claude Code (~/.claude/skills), or into this project
@@ -187,7 +189,7 @@ async function main() {
     case "export": {
       const { doc, abs } = load(pos[0]);
       requireValid(doc, pos[0]);
-      const want = { png: !!flags.png, pdf: !!flags.pdf, svg: !!flags.svg, screens: !!flags.screens };
+      const want = { png: !!flags.png, pdf: !!flags.pdf, svg: !!flags.svg, screens: !!flags.screens, html: !!flags.html };
       if (!Object.values(want).some(Boolean)) want.png = true;
       const outDir = ensureDir(resolve(typeof flags.out === "string" ? flags.out : dirname(abs)));
       const stem = stemOf(abs);
@@ -195,6 +197,7 @@ async function main() {
       if (want.png) { writeFileSync(join(outDir, `${stem}.png`), flowPNG(doc, abs, Number(flags.scale ?? 1.5))); written.push(join(outDir, `${stem}.png`)); }
       if (want.svg) { writeFileSync(join(outDir, `${stem}.svg`), flowSVGFile(doc, abs)); written.push(join(outDir, `${stem}.svg`)); }
       if (want.pdf) { writeFileSync(join(outDir, `${stem}.pdf`), await toPDF(doc, abs)); written.push(join(outDir, `${stem}.pdf`)); }
+      if (want.html) { writeFileSync(join(outDir, `${stem}.html`), toPrototypeHTML(doc, abs)); written.push(join(outDir, `${stem}.html`)); }
       if (want.screens) written.push(...renderScreens(doc, abs, Object.keys(doc.screens), Number(flags.scale ?? 2)));
       console.log(`✓ exported ${written.join(", ")}`);
       return;

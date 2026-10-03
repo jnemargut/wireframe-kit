@@ -33,6 +33,16 @@ export interface InspectorActions {
   setFree: (on: boolean) => void;
   startEdit: () => void;
   versionAs: (device: string) => void;
+  align: (how: "left" | "center" | "right" | "top" | "middle" | "bottom") => void;
+  distribute: (axis: "across" | "down") => void;
+  group: () => void;
+  ungroup: () => void;
+  lock: () => void;
+  copyStyle: () => void;
+  pasteStyle: () => void;
+  canPasteStyle: boolean;
+  /** How many more things are selected besides the main one. */
+  extraCount: number;
 }
 
 interface Props { doc: WireframeFile; layouts: Record<string, Layout>; sel: Sel; result?: Result; a: InspectorActions; focusText: number }
@@ -147,8 +157,44 @@ function Issues({ result, prefix }: { result?: Result; prefix: string }) {
 
 const dotted = (path: (string | number)[]) => "$" + path.map((p) => (typeof p === "number" ? `[${p}]` : `.${p}`)).join("");
 
+const ALIGN: [Parameters<InspectorActions["align"]>[0], string, string][] = [
+  ["left", "Align left edges", "M5 3 V21 M8 7 H19 M8 12 H15 M8 17 H18"],
+  ["center", "Align centers", "M12 3 V21 M6 7 H18 M8 12 H16 M5 17 H19"],
+  ["right", "Align right edges", "M19 3 V21 M5 7 H16 M9 12 H16 M6 17 H16"],
+  ["top", "Align tops", "M3 5 H21 M7 8 V19 M12 8 V15 M17 8 V18"],
+  ["middle", "Align middles", "M3 12 H21 M7 6 V18 M12 8 V16 M17 5 V19"],
+  ["bottom", "Align bottoms", "M3 19 H21 M7 5 V16 M12 9 V16 M17 6 V16"],
+];
+
+/** Lock, group and copy/paste a look. */
+function Arrange({ a, locked, grouped, multi }: { a: InspectorActions; locked: boolean; grouped: boolean; multi: boolean }) {
+  return (
+    <div className="actions arrange">
+      {multi && !grouped ? <button className="btn" onClick={a.group} title="Cmd+G: click any one to pick up the lot">Group</button> : null}
+      {grouped ? <button className="btn" onClick={a.ungroup} title="Shift+Cmd+G">Ungroup</button> : null}
+      <button className={`btn${locked ? " on" : ""}`} aria-pressed={locked} onClick={a.lock} title="Shift+Cmd+L: stays put until you unlock it">{locked ? "Locked" : "Lock"}</button>
+      {!multi ? <button className="btn" onClick={a.copyStyle} title="Option+Cmd+C: copy its look">Copy style</button> : null}
+      {a.canPasteStyle ? <button className="btn" onClick={a.pasteStyle} title="Option+Cmd+V">Paste style</button> : null}
+    </div>
+  );
+}
+
 export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
   const screens = Object.keys(doc.screens);
+  const at = (x: { screen: string; key: string }) => getAt(doc, x.key ? (x.key.startsWith("shape:") ? ["screens", x.screen, "shapes", Number(x.key.slice(6))] : pathOf(x.screen, x.key)) : ["screens", x.screen]) as { locked?: boolean; group?: string } | undefined;
+
+  if (sel && a.extraCount > 0) {
+    const n = a.extraCount + 1;
+    return (
+      <aside className="inspector">
+        <h3>{n} selected<small>{sel.key ? "on one screen" : "screens"}</small></h3>
+        <p className="doc">Drag any of them to move them all. Shift+click adds or takes one out. Things in the layout stacks place themselves; these tools move the ones placed freely, drawings, and screens.</p>
+        <div className="field wide"><span>Align</span><span className="quick">{ALIGN.map(([how, title, d]) => <button key={how} type="button" title={title} aria-label={title} onClick={() => a.align(how)}><svg viewBox="0 0 24 24" width={18} height={18}><path d={d} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" /></svg></button>)}</span></div>
+        {n > 2 ? <div className="field"><span>Space evenly</span><span className="quick"><button type="button" onClick={() => a.distribute("across")}>Across</button><button type="button" onClick={() => a.distribute("down")}>Down</button></span></div> : null}
+        <Arrange a={a} locked={!!at(sel)?.locked} grouped={!!at(sel)?.group} multi={!!sel.key} />
+      </aside>
+    );
+  }
 
   if (!sel) {
     const total = (result?.errors.length ?? 0) + (result?.warnings.length ?? 0);
@@ -255,7 +301,8 @@ export function Inspector({ doc, layouts, sel, result, a, focusText }: Props) {
           {typeof raw.width === "number" ? <p className="hint">Width is {raw.width}px.</p> : null}
         </>
       )}
-      {Array.isArray(raw.at) ? <Layer a={a} /> : null}
+      <Layer a={a} />
+      {sel ? <Arrange a={a} locked={!!at(sel)?.locked} grouped={!!at(sel)?.group} multi={false} /> : null}
       <div className="actions">
         <button className="btn" title="Move up (⌥↑)" onClick={() => a.move(-1)}>↑</button>
         <button className="btn" title="Move down (⌥↓)" onClick={() => a.move(1)}>↓</button>
@@ -314,7 +361,7 @@ function ShapePanel({ doc, screen, index, a }: { doc: WireframeFile; screen: str
       <div className="crumbs"><button onClick={() => a.select({ screen, key: "" })}>{doc.screens[screen].title ?? screen}</button></div>
       <h3>{SHAPE_NAME[sh.type] ?? "Drawing"}<small> Drawing</small></h3>
       <p className="doc">Your own marks on the screen, for anything the components don't cover.</p>
-      <div className="field"><span>Color</span>
+      <div className="field wide"><span>Color</span>
         <span className="swatches">{COLORS.map((c) => <button key={c} title={c} aria-label={c} className={(sh.color ?? "ink") === c ? "on" : ""} onClick={() => a.setProp(path, "color", c === "ink" ? undefined : c)}><span className="dot" style={{ background: MARKER[c] }} /></button>)}<AnyColor value={sh.color} onPick={(h) => a.setProp(path, "color", h)} /></span>
       </div>
       {sh.type === "rect" || sh.type === "ellipse" || sh.type === "path" ? (
@@ -337,7 +384,15 @@ function ShapePanel({ doc, screen, index, a }: { doc: WireframeFile; screen: str
           </select>
         </label>
       )}
+      <div className="field"><span>Turn</span>
+        <span className="quick">
+          <button type="button" onClick={() => a.setProp(path, "rotate", ((((sh.rotate ?? 0) - 15) % 360) + 360) % 360 || undefined)} title="15° counterclockwise">↺ 15°</button>
+          <button type="button" onClick={() => a.setProp(path, "rotate", ((sh.rotate ?? 0) + 15) % 360 || undefined)} title="15° clockwise">↻ 15°</button>
+          {sh.rotate ? <button type="button" onClick={() => a.setProp(path, "rotate", undefined)} title="Back to straight">Straight</button> : null}
+        </span>
+      </div>
       <Layer a={a} />
+      <Arrange a={a} locked={!!sh.locked} grouped={!!sh.group} multi={false} />
       {sh.type === "text" ? <label className="field"><span>Text</span><TextIn multiline value={sh.text ?? ""} onChange={(v) => a.setProp(path, "text", v, `${path.join(".")}.text`)} /></label> : null}
       <div className="actions">
         <button className="btn" onClick={a.duplicate}>Duplicate</button>
@@ -383,6 +438,7 @@ function ScreenSize({ doc, screen, layouts, a }: { doc: WireframeFile; screen: s
           {CHROMES.map((c) => <option key={c} value={c}>{c === "none" ? "no body" : c}</option>)}
         </select>
       </label>
+      <label className="field inline" title="Stays put on the canvas until you unlock it (Shift+Cmd+L)"><span>Locked in place</span><input type="checkbox" checked={!!doc.screens[screen]?.locked} onChange={(e) => a.setProp(["screens", screen], "locked", e.target.checked || undefined)} /></label>
       <label className="field inline" title="Show this screen inside a web browser, with its tabs and address bar">
         <span>In a browser</span><input type="checkbox" checked={typeof sc.url === "string"} onChange={(e) => a.setProp(["screens", screen], "url", e.target.checked ? "example.com" : undefined)} />
       </label>

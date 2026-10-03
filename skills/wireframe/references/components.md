@@ -11,6 +11,8 @@ Every element also takes:
   - `height`: Height in px (most things size themselves).
   - `grow`: Take a share of leftover space along the stack (a spacer grows by default).
   - `note`: A designer's note. Shown as a numbered sticky beside the screen on the canvas, never on the screen itself.
+  - `locked`: Stays put until it's unlocked (editor-owned: Shift+Cmd+L).
+  - `group`: Moves and selects with the others in its group (editor-owned: Cmd+G).
   - `at`: Place it freely at [x, y] on the screen, outside the stacks (top-level elements only). The editor writes this when a designer drags something in; agents should prefer stacks.
 
 ## Layout

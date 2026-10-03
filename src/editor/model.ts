@@ -229,3 +229,27 @@ export function versionAs(doc: WireframeFile, id: string, device: string, below:
   }
   return { doc: d, id: nid };
 }
+
+// ---------- arranging: groups, locks, styles ----------
+
+/** Where a selected thing's own props live: the screen, one of its drawings, or an element. */
+export function propPathOf(x: { screen: string; key: string }): Path {
+  if (!x.key) return ["screens", x.screen];
+  if (x.key.startsWith("shape:")) return ["screens", x.screen, "shapes", Number(x.key.slice(6))];
+  return pathOf(x.screen, x.key);
+}
+
+/** The props a look is made of, for copy/paste style between components of the same type. */
+export const STYLE_KEYS = ["variant", "size", "kind", "filled", "round", "flat", "large", "muted", "align", "dividers", "cards", "chevrons", "striped"];
+
+/** Everything else in the same group as this, on the same screen. */
+export function groupMates(doc: WireframeFile, x: { screen: string; key: string }): { screen: string; key: string }[] {
+  if (!x.key) return [];
+  const g = (getAt(doc, [...propPathOf(x), "group"]) as string | undefined);
+  if (!g) return [];
+  const out: { screen: string; key: string }[] = [];
+  const sc = doc.screens[x.screen];
+  (sc?.shapes ?? []).forEach((sh, i) => { if (sh.group === g && `shape:${i}` !== x.key) out.push({ screen: x.screen, key: `shape:${i}` }); });
+  (sc?.children ?? []).forEach((c, i) => { const k = `children/${i}`; if (c && (c as WNode).group === g && k !== x.key) out.push({ screen: x.screen, key: k }); });
+  return out;
+}

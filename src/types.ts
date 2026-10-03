@@ -38,6 +38,8 @@ export interface Screen {
   statusbar?: boolean;
   /** Per-screen device override. */
   device?: DeviceName | { w: number; h: number };
+  /** Stays put on the canvas until it's unlocked. */
+  locked?: boolean;
   /** Show the screen inside a web browser with this address in the address bar. */
   url?: string;
   /** The body drawn around this screen (default: picked from the device). */

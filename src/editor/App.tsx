@@ -25,7 +25,10 @@ export function App() {
   const [result, setResult] = useState<Result>();
   const [file, setFile] = useState("");
   const [bust, setBust] = useState(0);
-  const [sel, setSel] = useState<M.Sel>(null);
+  const [sel, setSelOnly] = useState<M.Sel>(null);
+  /** Also selected (Shift+click): more screens, or more free elements and drawings on the same screen. */
+  const [extra, setExtra] = useState<{ screen: string; key: string }[]>([]);
+  const [styleClip, setStyleClip] = useState<{ kind: string; props: Record<string, unknown> } | null>(null);
   const [view, setView] = useState<View>({ x: 40, y: 40, k: 0.5 });
   const [dragging, setDragging] = useState(false);
   const [play, setPlay] = useState<string | null>(null);
@@ -125,7 +128,139 @@ export function App() {
     setSel({ screen: t.screen, key: M.keyOf(r.path) });
   };
 
+  /** Selecting one thing in a group picks up the whole group. */
+  function setSel(next: M.Sel | ((cur: M.Sel) => M.Sel)) {
+    setSelOnly((cur) => {
+      const n = typeof next === "function" ? (next as (c: M.Sel) => M.Sel)(cur) : next;
+      setExtra(n && doc ? M.groupMates(doc, n) : []);
+      return n;
+    });
+  }
+  const allSel = (): { screen: string; key: string }[] => (sel ? [sel, ...extra] : []);
+  const onToggle = (c: { screen: string; key: string }) => {
+    if (!sel) return setSel(c);
+    const same = (x: { screen: string; key: string }) => x.screen === c.screen && x.key === c.key;
+    if (same(sel)) { const [first, ...rest] = extra; setSelOnly(first ?? null); setExtra(rest); return; }
+    if (extra.some(same)) { setExtra(extra.filter((x) => !same(x))); return; }
+    // screens go with screens; elements with elements on the same screen
+    const ok = (!sel.key && !c.key) || (!!sel.key && !!c.key && sel.screen === c.screen);
+    if (!ok) return setSel(c);
+    setExtra([...extra, c, ...(doc ? M.groupMates(doc, c).filter((m) => !same(m) && !extra.some((x) => x.screen === m.screen && x.key === m.key)) : [])]);
+  };
+  const isLocked = (x: { screen: string; key: string }, d: WireframeFile | null = doc) => {
+    if (!d) return false;
+    if (!x.key) return !!d.screens[x.screen]?.locked;
+    if (x.key.startsWith("shape:")) return !!d.screens[x.screen]?.shapes?.[Number(x.key.slice(6))]?.locked;
+    return !!(M.getAt(d, M.pathOf(x.screen, x.key)) as WNode | undefined)?.locked;
+  };
+  /** A free element or drawing moved by (dx, dy); things in the stacks get a nudge instead. */
+  const moveOne = (d: WireframeFile, screen: string, key: string, dx: number, dy: number): WireframeFile => {
+    if (key.startsWith("shape:")) {
+      const i = Number(key.slice(6));
+      const sh = d.screens[screen]?.shapes?.[i];
+      return sh ? M.setAt(d, ["screens", screen, "shapes", i, "points"], sh.points.map(([x, y]) => [x + dx, y + dy])) : d;
+    }
+    const path = M.pathOf(screen, key);
+    const raw = M.getAt(d, path) as WNode;
+    if (raw && isFree(raw)) { const [x, y] = raw.at as [number, number]; return M.setAt(d, [...path, "at"], [Math.round(x + dx), Math.round(y + dy)]); }
+    const { doc: withId, id } = M.ensureId(d, screen, path);
+    const cur = d.layout?.[screen]?.[id] ?? {};
+    const nx = (cur.dx ?? 0) + dx, ny = (cur.dy ?? 0) + dy;
+    const clean = Object.fromEntries(Object.entries({ ...cur, dx: nx || undefined, dy: ny || undefined }).filter(([, v]) => v !== undefined));
+    return M.setAt(withId, ["layout", screen, id], Object.keys(clean).length ? clean : undefined);
+  };
+  /** Where a selected thing sits on the canvas (screens) or on its screen (elements, drawings). */
+  const rectFor = (x: { screen: string; key: string }): { x: number; y: number; w: number; h: number } | undefined => {
+    const l = layouts[x.screen];
+    if (!l) return undefined;
+    if (!x.key) return { x: pos[x.screen][0], y: pos[x.screen][1], w: l.w, h: l.h };
+    return doc ? selRectOf(doc, l, x.key) : undefined;
+  };
+  const shift = (d: WireframeFile, moves: { x: { screen: string; key: string }; dx: number; dy: number }[]): WireframeFile => {
+    let n = d;
+    const canvas: Record<string, [number, number]> = { ...Object.fromEntries(Object.entries(pos).map(([k, v]) => [k, [v[0], v[1]] as [number, number]])), ...(d.canvas ?? {}) };
+    let screens = false;
+    for (const { x, dx, dy } of moves) {
+      if (isLocked(x, n) || (!dx && !dy)) continue;
+      if (!x.key) { canvas[x.screen] = [Math.round(canvas[x.screen][0] + dx), Math.round(canvas[x.screen][1] + dy)]; screens = true; }
+      else n = moveOne(n, x.screen, x.key, Math.round(dx), Math.round(dy));
+    }
+    return screens ? { ...n, canvas } : n;
+  };
+
   const a: InspectorActions = {
+    align: (how) => {
+      if (!doc) return;
+      const items = allSel().filter((x) => !isLocked(x)).map((x) => ({ x, r: rectFor(x) })).filter((v): v is { x: { screen: string; key: string }; r: { x: number; y: number; w: number; h: number } } => !!v.r);
+      if (items.length < 2) return;
+      const L0 = Math.min(...items.map((v) => v.r.x)), R0 = Math.max(...items.map((v) => v.r.x + v.r.w));
+      const T0 = Math.min(...items.map((v) => v.r.y)), B0 = Math.max(...items.map((v) => v.r.y + v.r.h));
+      edit(shift(doc, items.map(({ x, r }) => ({ x,
+        dx: how === "left" ? L0 - r.x : how === "right" ? R0 - r.x - r.w : how === "center" ? (L0 + R0) / 2 - r.x - r.w / 2 : 0,
+        dy: how === "top" ? T0 - r.y : how === "bottom" ? B0 - r.y - r.h : how === "middle" ? (T0 + B0) / 2 - r.y - r.h / 2 : 0 }))));
+    },
+    distribute: (axis) => {
+      if (!doc) return;
+      const items = allSel().filter((x) => !isLocked(x)).map((x) => ({ x, r: rectFor(x) })).filter((v): v is { x: { screen: string; key: string }; r: { x: number; y: number; w: number; h: number } } => !!v.r);
+      if (items.length < 3) return;
+      const P = (r: { x: number; y: number }) => (axis === "across" ? r.x : r.y), S = (r: { w: number; h: number }) => (axis === "across" ? r.w : r.h);
+      items.sort((p1, q) => P(p1.r) - P(q.r));
+      const span = P(items[items.length - 1].r) + S(items[items.length - 1].r) - P(items[0].r), total = items.reduce((t, v) => t + S(v.r), 0);
+      const gap = (span - total) / (items.length - 1);
+      let at = P(items[0].r);
+      edit(shift(doc, items.map(({ x, r }) => { const m = { x, dx: axis === "across" ? at - r.x : 0, dy: axis === "down" ? at - r.y : 0 }; at += S(r) + gap; return m; })));
+    },
+    group: () => {
+      if (!doc) return;
+      const items = allSel().filter((x) => x.key);
+      if (items.length < 2) return;
+      const used = new Set<string>();
+      for (const sc of Object.values(doc.screens)) { for (const sh of sc.shapes ?? []) if (sh.group) used.add(sh.group); }
+      let n = 1; while (used.has(`g${n}`) || JSON.stringify(doc).includes(`"group":"g${n}"`)) n++;
+      let d = doc;
+      for (const x of items) d = M.setAt(d, [...M.propPathOf(x), "group"], `g${n}`);
+      edit(d); flash("Grouped. Click any of them to pick up the lot. Shift+Cmd+G ungroups.");
+    },
+    ungroup: () => {
+      if (!doc) return;
+      let d = doc;
+      for (const x of allSel()) if (x.key) d = M.setAt(d, [...M.propPathOf(x), "group"], undefined);
+      edit(d);
+    },
+    lock: () => {
+      if (!doc) return;
+      const items = allSel();
+      if (!items.length) return;
+      const on = !items.every((x) => isLocked(x));
+      let d = doc;
+      for (const x of items) d = M.setAt(d, [...M.propPathOf(x), "locked"], on ? true : undefined);
+      edit(d); flash(on ? "Locked: it stays put. Shift+Cmd+L unlocks." : "Unlocked.");
+    },
+    copyStyle: () => {
+      if (!doc || !sel?.key) return;
+      const o = M.getAt(doc, M.propPathOf(sel)) as Record<string, unknown> | undefined;
+      if (!o) return;
+      const kind = sel.key.startsWith("shape:") ? "shape" : String(o.type ?? "");
+      const keys = kind === "shape" ? ["color", "weight", "fill", "size"] : M.STYLE_KEYS.filter((k) => k in (COMPONENTS[kind]?.props ?? {}));
+      setStyleClip({ kind, props: Object.fromEntries(keys.map((k) => [k, o[k]])) });
+      flash("Style copied. Select something like it and Option+Cmd+V (or Paste style).");
+    },
+    pasteStyle: () => {
+      if (!doc || !styleClip) return;
+      let d = doc, n = 0;
+      for (const x of allSel()) {
+        if (!x.key) continue;
+        const o = M.getAt(d, M.propPathOf(x)) as Record<string, unknown> | undefined;
+        const kind = x.key.startsWith("shape:") ? "shape" : String(o?.type ?? "");
+        if (kind !== styleClip.kind) continue;
+        for (const [k, v] of Object.entries(styleClip.props)) d = M.setAt(d, [...M.propPathOf(x), k], v);
+        n++;
+      }
+      if (!n) return flash(`That style is from a ${styleClip.kind === "shape" ? "drawing" : styleClip.kind}: select one of those.`);
+      edit(d);
+    },
+    canPasteStyle: !!styleClip,
+    extraCount: extra.length,
     edit,
     setProp: (path, prop, value, co) => doc && edit(M.setProp(doc, path, prop, value), co),
     select: setSel,
@@ -249,6 +384,13 @@ export function App() {
   /** Move a drawing, a free element (its `at`), or nudge a layout element. */
   const onMove = (screen: string, key: string, dx: number, dy: number, commit: boolean) => {
     if (!doc) return;
+    // several selected: they all move together (locked ones stay put)
+    if (extra.length && sel && sel.screen === screen && sel.key === key) {
+      const next0 = shift(doc, allSel().filter((x) => x.key).map((x) => ({ x, dx, dy })));
+      if (commit) { setDraft(null); if (dx || dy) edit(next0); } else setDraft(next0);
+      return;
+    }
+    if (isLocked({ screen, key })) return;
     let next: WireframeFile;
     if (key.startsWith("shape:")) {
       const i = Number(key.slice(6));
@@ -408,7 +550,13 @@ export function App() {
   };
 
   const onMoveScreen = (screen: string, x: number, y: number, commit: boolean) => {
-    if (!doc) return;
+    if (!doc || isLocked({ screen, key: "" })) return;
+    if (extra.length && sel && !sel.key && sel.screen === screen) {
+      const dx = x - pos[screen][0], dy = y - pos[screen][1];
+      const next0 = shift(doc, allSel().filter((s2) => !s2.key).map((s2) => ({ x: s2, dx, dy })));
+      if (commit) { setDraft(null); edit(next0); } else setDraft(next0);
+      return;
+    }
     // first move freezes every screen where it is, so moving one doesn't shuffle the rest
     const canvas: Record<string, [number, number]> = { ...Object.fromEntries(Object.entries(pos).map(([k, v]) => [k, [v[0], v[1]] as [number, number]])), ...(doc.canvas ?? {}), [screen]: [x, y] };
     const next = { ...doc, canvas };
@@ -486,6 +634,10 @@ export function App() {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); if (e.shiftKey) step(redo, undo); else step(undo, redo); return; }
       if (typing) return;
+      if (mod && e.altKey && e.key.toLowerCase() === "c" && sel) { e.preventDefault(); a.copyStyle(); return; }
+      if (mod && e.altKey && e.key.toLowerCase() === "v" && sel) { e.preventDefault(); a.pasteStyle(); return; }
+      if (mod && e.key.toLowerCase() === "g" && sel) { e.preventDefault(); if (e.shiftKey) a.ungroup(); else a.group(); return; }
+      if (mod && e.shiftKey && e.key.toLowerCase() === "l" && sel) { e.preventDefault(); a.lock(); return; }
       if (e.key === "Escape") {
         setMenu(false);
         if (tool !== "select") { setTool("select"); return; }
@@ -533,7 +685,7 @@ export function App() {
       if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); a.move(e.key === "ArrowUp" ? -1 : 1); return; }
       if (sel?.key && e.key.startsWith("Arrow")) {
         e.preventDefault();
-        const d = e.shiftKey ? 8 : 1;
+        const d = e.shiftKey ? 10 : 1;
         const dx = e.key === "ArrowLeft" ? -d : e.key === "ArrowRight" ? d : 0, dy = e.key === "ArrowUp" ? -d : e.key === "ArrowDown" ? d : 0;
         onMove(sel.screen, sel.key.startsWith("shape:") ? sel.key : sel.key.split("#")[0], dx, dy, true);
         return;
@@ -549,7 +701,7 @@ export function App() {
 
   useEffect(() => { if (sel) lastScreen.current = sel.screen; }, [sel]);
   // read-only hook for the end-to-end tests: where things are on the canvas
-  useEffect(() => { (window as unknown as { __wf: unknown }).__wf = { layouts, pos, view, sel }; }, [layouts, pos, view, sel]);
+  useEffect(() => { (window as unknown as { __wf: unknown }).__wf = { layouts, pos, view, sel, extra }; }, [layouts, pos, view, sel, extra]);
 
   if (error && !doc) return <div className="boot">Couldn't load the wireframe: {error}</div>;
   if (!doc || !shown) return <div className="boot">Loading…</div>;
@@ -581,6 +733,7 @@ export function App() {
             <a href="/api/export?format=png" download>Flow as PNG</a>
             <a href="/api/export?format=pdf" download>PDF (flow + each screen)</a>
             <a href="/api/export?format=svg" download>Flow as SVG</a>
+            <a href="/api/export?format=html" download>Clickable prototype (one HTML file)</a>
           </div> : null}
         </div>
         <button className="btn dark" onClick={() => a.play(sel?.screen)} title="Click through the flow (P)">Play</button>
@@ -589,7 +742,7 @@ export function App() {
         {palette ? <Palette onInsert={onInsert} onClose={() => setPalette(false)} onUpload={addImage} /> : null}
         <div className="canvas-wrap" ref={canvasEl}>
           <Canvas doc={shown} layouts={layouts} pos={pos} arrows={arr} below={laneSpace(arr)} view={view} setView={setView}
-            sel={sel} onSelect={setSel} tool={tool} onMove={onMove} onResize={onResize} onMoveScreen={onMoveScreen}
+            sel={sel} onSelect={setSel} extra={extra} onToggle={onToggle} tool={tool} onMove={onMove} onResize={onResize} onMoveScreen={onMoveScreen}
             onDraw={onDraw} onTextTool={onTextTool} onStartEdit={(s2, k) => { setSel({ screen: s2, key: k }); startEdit(s2, k); }} editing={editing} onEditDone={finishEdit}
             onDropNode={onDropNode} onDropFile={onDropFile}
             asset={asset} dragging={dragging} setDragging={setDragging} />

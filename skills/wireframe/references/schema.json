@@ -1073,6 +1073,17 @@
             "number"
           ]
         },
+        "locked": {
+          "description": "Stays put until it's unlocked (editor-owned: Shift+Cmd+L).",
+          "type": "boolean"
+        },
+        "group": {
+          "description": "Moves and selects with the others in its group (editor-owned: Cmd+G).",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
         "at": {
           "description": "Place it freely at [x, y] on the screen, outside the stacks (top-level elements only). The editor writes this when a designer drags something in; agents should prefer stacks.",
           "type": "array",

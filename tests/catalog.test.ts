@@ -77,4 +77,19 @@ describe("catalog", () => {
     expect(validate(f).errors).toEqual([]);
     expect(screenSVG(f, "s").toLowerCase()).toContain("#e8b04b");
   });
+
+  it("exports a clickable prototype: every screen, its links, and the start screen", async () => {
+    const { toPrototypeHTML } = await import("../src/prototype");
+    const f: WireframeFile = { title: "Order", start: "menu", screens: {
+      menu: { title: "Menu", children: [{ type: "button", text: "Order", goes: "pay" }] },
+      pay: { title: "Pay", children: [{ type: "navbar", title: "Pay", back: true }, { type: "button", text: "Done", goes: "menu" }] },
+    } };
+    const html = toPrototypeHTML(f, "/tmp/order.wireframe.json");
+    expect(html).toContain('<template id="s-menu">');
+    expect(html).toContain('<template id="s-pay">');
+    const data = JSON.parse(/const D = (.*);\n/.exec(html)![1]);
+    expect(data.start).toBe("menu");
+    const pay = data.screens.find((s: { id: string }) => s.id === "pay");
+    expect(pay.hots.map((h: { goes: string }) => h.goes).sort()).toEqual(["back", "menu"]);
+  });
 });

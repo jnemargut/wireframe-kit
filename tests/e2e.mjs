@@ -196,6 +196,99 @@ ok("Properties hides the panel", (await page.locator(".inspector").count()) === 
 await page.keyboard.press("Meta+Backslash");
 ok("Cmd+\\ brings it back", (await page.locator(".inspector").count()) === 1);
 
+// the same checklist for a selected drawing in every kit (Storyboard and Flowchart run it too):
+// any hex color, line thickness, duplicate, layer, cut and paste, undo and redo, delete
+{
+  const HEX = "#7a3cb5";
+  const mine = () => (read().screens.menu.shapes ?? []).filter((s) => s.type === "rect" && s.color === HEX);
+  const order = () => JSON.stringify(read().screens.menu.shapes);
+  await page.keyboard.press("Escape"); await page.keyboard.press("Escape");
+  await page.locator(".screen-list button").first().click();
+  await sleep(400);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Marker color", exact: true }).click();
+  await page.getByRole("button", { name: "Any marker color" }).click();
+  await page.getByLabel("Hex color").fill(HEX);
+  await page.getByLabel("Hex color").press("Enter");
+  await page.getByRole("button", { name: "Line thickness", exact: true }).click();
+  await page.getByRole("button", { name: "thick", exact: true }).click();
+  await page.keyboard.press("r");
+  const o = await page.evaluate(() => { const { pos, view } = window.__wf; const c = document.querySelector(".canvas").getBoundingClientRect(); return { x: c.left + view.x + pos.menu[0] * view.k, y: c.top + view.y + pos.menu[1] * view.k, k: view.k }; });
+  await page.mouse.move(o.x + 60 * o.k, o.y + 160 * o.k); await page.mouse.down(); await page.mouse.move(o.x + 200 * o.k, o.y + 240 * o.k, { steps: 5 }); await page.mouse.up();
+  ok("checklist: a box drawn in any hex color with a thick line", await until(() => mine().length === 1 && mine()[0].weight === "thick"), JSON.stringify(read().screens.menu.shapes));
+  await page.keyboard.press("v");
+  await page.keyboard.press("Meta+d");
+  ok("checklist: Cmd+D duplicates the drawing", await until(() => mine().length === 2));
+  const before = order();
+  await page.keyboard.press("Meta+Shift+BracketLeft");
+  ok("checklist: Cmd+Shift+[ sends it to the back", await until(() => order() !== before));
+  await page.keyboard.press("Meta+x");
+  ok("checklist: Cmd+X cuts it", await until(() => mine().length === 1));
+  await page.mouse.move(o.x + 150 * o.k, o.y + 400 * o.k);
+  await page.keyboard.press("Meta+v");
+  ok("checklist: Cmd+V pastes it back as a drawing", await until(() => mine().length === 2), JSON.stringify(read().screens.menu.shapes));
+  await page.keyboard.press("Meta+z");
+  ok("checklist: undo", await until(() => mine().length === 1));
+  await page.keyboard.press("Meta+Shift+z");
+  ok("checklist: redo", await until(() => mine().length === 2));
+  await page.keyboard.press("Delete");
+  ok("checklist: Delete removes it", await until(() => mine().length === 1), JSON.stringify(await page.evaluate(() => window.__wf.sel)));
+  await page.keyboard.press("Escape");
+}
+
+// arranging: Shift-click two drawings, line them up, group them, lock them, then copy one's style onto the other
+{
+  const shapes = () => read().screens.menu.shapes ?? [];
+  const red = () => shapes().findIndex((s) => s.color === "red"), hex = () => shapes().findIndex((s) => s.color === "#7a3cb5");
+  // the middle of a shape's left edge, on the page
+  const edge = (i) => page.evaluate(([i, s]) => { const { pos, view } = window.__wf; const c = document.querySelector(".canvas").getBoundingClientRect(); const xs = s.points.map((p) => p[0]), ys = s.points.map((p) => p[1]); return { x: c.left + view.x + (pos.menu[0] + Math.min(...xs)) * view.k, y: c.top + view.y + (pos.menu[1] + (Math.min(...ys) + Math.max(...ys)) / 2) * view.k }; }, [i, shapes()[i]]);
+  const left = (i) => Math.min(...shapes()[i].points.map((p) => p[0]));
+  await page.keyboard.press("Escape"); await page.keyboard.press("Escape");
+  const r0 = await edge(red()), h0 = await edge(hex());
+  await page.mouse.click(r0.x, r0.y);
+  await page.keyboard.down("Shift"); await page.mouse.click(h0.x, h0.y); await page.keyboard.up("Shift");
+  ok("Shift-click adds a second drawing to the selection", (await page.evaluate(() => window.__wf.extra?.length ?? 0)) === 1, JSON.stringify(await page.evaluate(() => [window.__wf.sel, window.__wf.extra])));
+  await page.getByRole("button", { name: "Align left edges" }).click();
+  ok("Align left edges lines them up", await until(() => left(red()) === left(hex())), JSON.stringify(shapes()));
+  await page.keyboard.press("Meta+g");
+  ok("Cmd+G groups them", await until(() => shapes()[red()].group && shapes()[red()].group === shapes()[hex()].group));
+  await page.keyboard.press("Escape");
+  const r1 = await edge(red());
+  await page.mouse.click(r1.x, r1.y);
+  ok("clicking one picks up its group", (await page.evaluate(() => window.__wf.extra?.length ?? 0)) === 1);
+  await page.keyboard.press("Meta+Shift+l");
+  ok("Shift+Cmd+L locks them", await until(() => shapes()[red()].locked && shapes()[hex()].locked));
+  const before = JSON.stringify(shapes()[red()].points);
+  await page.mouse.move(r1.x, r1.y); await page.mouse.down(); await page.mouse.move(r1.x + 60, r1.y + 30, { steps: 6 }); await page.mouse.up();
+  await sleep(500);
+  ok("a locked drawing doesn't move when dragged", JSON.stringify(shapes()[red()].points) === before);
+  await page.keyboard.press("Meta+Shift+l");
+  ok("Shift+Cmd+L again unlocks", await until(() => !shapes()[red()].locked));
+  await page.keyboard.press("Meta+Shift+g");
+  ok("Shift+Cmd+G ungroups", await until(() => !shapes()[red()].group));
+  await page.keyboard.press("Escape");
+  const h1 = await edge(hex());
+  await page.mouse.click(h1.x, h1.y);
+  await page.keyboard.press("Alt+Meta+c");
+  await page.keyboard.press("Escape");
+  const r2 = await edge(red());
+  await page.mouse.click(r2.x, r2.y);
+  await page.keyboard.press("Alt+Meta+v");
+  ok("Option+Cmd+C / V copies one drawing's style onto another", await until(() => shapes().filter((s) => s.color === "#7a3cb5" && s.weight === "thick").length === 2), JSON.stringify(shapes()));
+  await page.keyboard.press("Escape");
+  // the Text tool: click, type, Enter finishes (Shift+Enter is a new line), like the other kits
+  await page.keyboard.press("t");
+  const tp = await page.evaluate(() => { const { pos, view } = window.__wf; const c = document.querySelector(".canvas").getBoundingClientRect(); return { x: c.left + view.x + (pos.menu[0] + 60) * view.k, y: c.top + view.y + (pos.menu[1] + 470) * view.k }; });
+  await page.mouse.click(tp.x, tp.y);
+  await page.locator("textarea.inline-edit").waitFor();
+  await page.keyboard.type("Two");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("lines");
+  await page.keyboard.press("Enter");
+  ok("Text tool: type, Shift+Enter for a new line, Enter to finish", await until(() => shapes().some((s) => s.type === "text" && s.text === "Two\nlines")), JSON.stringify(shapes().filter((s) => s.type === "text")));
+  await page.keyboard.press("Escape");
+}
+
 // export from the editor
 const res = await page.request.get(`${url}api/export?format=png`);
 ok("editor export returns a PNG", res.ok() && (await res.body()).readUInt32BE(0) === 0x89504e47);
