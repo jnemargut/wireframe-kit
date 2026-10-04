@@ -197,3 +197,20 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .quick button { border: 1.5px solid var(--color-400); background: #fff; padding: 2px 7px; cursor: pointer; font-size: 12px; }
 .quick button:hover { border-color: var(--color-ink); }
 .quick button.on { background: var(--color-ink); color: var(--color-paper); border-color: var(--color-ink); }
+
+/* Play: the screen is all that's on show. The controls are a small bar at the bottom that shows when the mouse
+   moves and steps aside when it stops. */
+.play { position: fixed; }
+.play-bar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(28, 28, 30, .92); border: 1.5px solid var(--color-700); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, .4); transition: opacity 260ms var(--ease), transform 260ms var(--ease); white-space: nowrap; }
+.play-bar.asleep { opacity: 0; transform: translateX(-50%) translateY(10px); pointer-events: none; }
+.play-bar button { background: none; color: var(--color-paper); border: 1.5px solid transparent; border-radius: 6px; padding: 3px 10px; font-size: var(--text-sm); }
+.play-bar button:hover:not(:disabled) { border-color: var(--color-600); }
+.play-bar button[aria-pressed="true"] { border-color: var(--color-paper); }
+.play-bar button:disabled { opacity: .3; }
+.play-bar button.nav { font-size: var(--text-base); padding: 1px 8px; }
+.play-bar .sep { width: 1px; height: 20px; background: var(--color-700); }
+.play-bar .play-title { font-family: var(--font-ui); font-size: var(--text-sm); max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.play-foot { position: absolute; left: 50%; right: auto; top: 12px; bottom: auto; transform: translateX(-50%); z-index: 2; pointer-events: none; padding: 4px 12px; border-radius: 8px; background: rgba(28, 28, 30, .92); color: var(--color-200); white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+.play-stage { padding: 14px 14px 62px; } /* room for the bar, so it never covers the bottom of what you're showing */
+.play-strip { padding-bottom: 68px; }
+@media (prefers-reduced-motion: reduce) { .play-bar { transition: none; } }

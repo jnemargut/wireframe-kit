@@ -9,6 +9,7 @@ import { bezelOf } from "../render/flow";
 import { ScreenArt, shapeScale } from "../render/screen";
 import type { WireframeFile } from "../types";
 import { COLORS } from "../../vendor/sketch/tools";
+import { useQuietControls } from "../../vendor/sketch/quiet";
 
 interface Hot extends Rect { key: string; goes: string }
 type MarkTool = "pen" | "eraser" | null;
@@ -20,6 +21,8 @@ export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFi
   const [tap, setTap] = useState<{ x: number; y: number; n: number } | null>(null);
   const [hint, setHint] = useState(false);
   const [strip, setStrip] = useState(false);
+  // what's being shown is all that's on screen: the controls show when the mouse moves and step aside when it stops
+  const { awake, tip, onPointerMove: onQuietMove } = useQuietControls(".play-bar");
   const [tool, setTool] = useState<MarkTool>(null);
   const [color, setColor] = useState("red");
   const [picking, setPicking] = useState(false);
@@ -83,27 +86,31 @@ export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFi
   const near = (x: number, y: number) => marks.map((m, i) => (m.points.some(([px, py]) => Math.hypot(px - x, py - y) < 14 * sc) ? i : -1)).filter((i) => i >= 0);
 
   return (
-    <div className={`play${tool ? ` marking ${tool}` : ""}`}>
-      <div className="play-top">
+    <div className={`play${tool ? ` marking ${tool}` : ""}`} onPointerMove={onQuietMove}>
+      {/* the screen is all that's on show: the controls are a small bar that steps aside when the mouse stops */}
+      <div className={`play-bar${awake || tool || picking ? "" : " asleep"}`}>
+        <button className="nav" disabled={stack.length < 2} onClick={() => go("back")} title="Back (←)" aria-label="Back">←</button>
         <span className="play-title"><RichHTML src={doc.screens[screen]?.title ?? screen} /></span>
-        <span className="play-count">{screen} · {stack.length > 1 ? `${stack.length - 1} step${stack.length > 2 ? "s" : ""} in` : "start"}</span>
-        <span className="spacer" />
+        <span className="play-count">{stack.length > 1 ? `${stack.length - 1} step${stack.length > 2 ? "s" : ""} in` : "start"}</span>
+        <span className="sep" />
         <div className="play-tools" role="group" aria-label="Markup">
           <button className={tool === "pen" ? "on" : ""} aria-pressed={tool === "pen"} onClick={() => setTool(tool === "pen" ? null : "pen")} title="Sharpie: draw over the screen (D)">Sharpie</button>
+          {/* the sharpie's own tools only while you're drawing */}
+          {tool ? <>
           <span className="pen-color">
             <button className="pen-dot" style={{ background: markerHex(color) }} onClick={() => setPicking(!picking)} aria-expanded={picking} aria-label={`Sharpie color: ${color}`} title="Sharpie color" />
             {picking ? <span className="pen-pop">{COLORS.map((c) => <button key={c} className={`pen-dot${c === color ? " on" : ""}`} style={{ background: MARKER[c] }} aria-label={c} title={c} onClick={() => { setColor(c); setTool("pen"); setPicking(false); }} />)}<AnyColor value={color} onPick={(h) => { setColor(h); setTool("pen"); }} title="Any sharpie color" /></span> : null}
           </span>
           <button className={tool === "eraser" ? "on" : ""} aria-pressed={tool === "eraser"} onClick={() => setTool(tool === "eraser" ? null : "eraser")} title="Eraser: click or drag over strokes (E)">Eraser</button>
-          <button onClick={clearScreen} disabled={!marks.length} title="Remove all markup from this screen">Clear screen</button>
-          <button onClick={clearAll} disabled={!anyMarkup} title="Remove markup from every screen">Clear all</button>
+          {marks.length ? <button onClick={clearScreen} title="Remove all markup from this screen">Clear screen</button> : null}
+          {anyMarkup ? <button onClick={clearAll} title="Remove markup from every screen">Clear all</button> : null}
+          </> : null}
         </div>
         <span className="sep" />
-        <button disabled={stack.length < 2} onClick={() => go("back")}>Back</button>
-        <button onClick={() => setStack([start])}>Restart</button>
-        <button onClick={() => setHint(!hint)} aria-pressed={hint}>Show links</button>
+        <button disabled={stack.length < 2} onClick={() => setStack([start])} title="Back to the first screen">Restart</button>
+        <button onClick={() => setHint(!hint)} aria-pressed={hint} title="Outline everything you can click">Show links</button>
         <button onClick={() => setStrip(!strip)} aria-pressed={strip} title="All screens (S)">Screens</button>
-        <button onClick={() => onExit(screen)}>Exit (Esc)</button>
+        <button onClick={() => onExit(screen)} title="Leave Play (Esc)">Exit</button>
       </div>
       <div className="play-stage" ref={stage}>
         <div className="play-device" style={{ width: l.w * k, height: l.h * k, margin: `${bz.t * k}px ${bz.r * k}px ${bz.b * k}px ${bz.l * k}px` }}
@@ -145,7 +152,7 @@ export function Play({ doc, start, onExit, asset, onMarkup }: { doc: WireframeFi
           {Object.keys(doc.screens).map((id) => <Thumb key={id} doc={doc} id={id} on={id === screen} onClick={() => go(id)} />)}
         </div>
       ) : null}
-      <div className="play-foot">{tool === "pen" ? "Draw on the screen. Marks are saved but only show here in play mode. D to stop." : tool === "eraser" ? "Click or drag over a stroke to erase it. E to stop." : `Click anything with a link. Back with ← or the navbar arrow. S shows every screen. ${hots.length ? `${hots.length} link${hots.length === 1 ? "" : "s"} on this screen.` : "No links on this screen."}`}</div>
+      {tool || tip ? <div className="play-foot">{tool === "pen" ? "Draw on the screen. Marks are saved but only show here in play mode. D to stop." : tool === "eraser" ? "Click or drag over a stroke to erase it. E to stop." : `Click anything with a link. Back with ← or the navbar arrow. S shows every screen. ${hots.length ? `${hots.length} link${hots.length === 1 ? "" : "s"} on this screen.` : "No links on this screen."}`}</div> : null}
     </div>
   );
 }

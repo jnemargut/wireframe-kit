@@ -142,6 +142,16 @@ ok("renaming a screen updates every link", await until(() => { const r = read();
 await page.keyboard.press("Escape");
 await page.locator("button", { hasText: /^Play$/ }).click();
 await page.waitForSelector(".play");
+// the screen is all that's on show: the controls step aside when the mouse stops and come back when it moves
+ok("the sharpie's extra tools are tucked away until you draw", (await page.locator(".play-bar button", { hasText: "Eraser" }).count()) === 0);
+ok("play's controls step aside when the mouse stops", await until(async () => (await page.locator(".play-bar").getAttribute("class")).includes("asleep"), 7000));
+ok("and the hint goes away", await until(async () => (await page.locator(".play-foot").count()) === 0, 3000));
+await page.mouse.move(300, 300); await page.mouse.move(320, 330);
+ok("moving the mouse brings them back", await until(async () => !(await page.locator(".play-bar").getAttribute("class")).includes("asleep")));
+{
+  const bar = await page.locator(".play-bar").boundingBox(), device = await page.locator(".play-device").boundingBox();
+  ok("the controls never sit on top of the screen", bar.y >= device.y + device.height - 1 || bar.x >= device.x + device.width || bar.x + bar.width <= device.x, JSON.stringify({ bar, device }));
+}
 const dev = await page.locator(".play-device").boundingBox();
 const item = await page.evaluate(() => { const l = window.__wf.layouts.menu; return l.items.find((it) => it.goes === "drink"); });
 const k = dev.width / 390;

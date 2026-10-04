@@ -162,9 +162,11 @@ builds stays in tidy stacks, and anything you drag in lands exactly where you dr
 
 **Play mode**
 
-![Play mode with sharpie marks and the screens strip](docs/play-a152a53.png)
+![Play mode with sharpie marks and the screens strip](docs/play-bb38c58.png)
 
-Hit **Play** (or P) and click through the flow like the real app, with a big pointer the room can follow.
+Hit **Play** (or P) and click through the flow like the real app, with a big pointer the room can follow. The
+screen is all that's showing: the controls are a small bar that shows up when you move the mouse and steps aside
+when you stop.
 Links glow orange when you hover; Back, ← or the navbar arrow take you back.
 
 - **S** shows every screen in a strip, so you can jump anywhere, linked or not.
