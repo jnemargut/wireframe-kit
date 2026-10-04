@@ -95,6 +95,9 @@ Or just click around yourself. Your edits and the agent's edits land in the same
   size is picked.
 - **Websites in a real-looking browser.** Give a screen a web address and it gets browser tabs and an address
   bar with that URL. Change the address in the editor any time. There's a desktop app window too.
+- **Charts with real numbers.** A chart is a placeholder until you give it numbers, then it draws them roughly
+  (bars, sideways bars, a line, a funnel, a pie or a donut) with each number written on it and the one that
+  matters called out. Type them in the side panel or paste cells from a spreadsheet.
 - **A sketch box for everything else.** A dashed box with a label for the bits that are yours alone. The checker
   nudges your agent if a screen is mostly sketch boxes.
 - **Real flows.** Buttons, list rows, tabs and menu items link to other screens. Shared pieces like the tab bar

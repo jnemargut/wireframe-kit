@@ -236,6 +236,25 @@ ok("Cmd+\\ brings it back", (await page.locator(".inspector").count()) === 1);
   await page.keyboard.press("Escape");
 }
 
+// a chart takes real numbers from its panel (typed, or cells pasted from a spreadsheet)
+{
+  const find = (o) => { if (!o || typeof o !== "object") return undefined; if (o.type === "chart") return o; for (const v of Object.values(o)) { const r = find(v); if (r) return r; } return undefined; };
+  await page.keyboard.press("Escape"); await page.keyboard.press("Escape");
+  await page.locator(".screen-list button", { hasText: "Order status" }).first().click();
+  await sleep(300);
+  await page.locator(".tile").filter({ has: page.locator(".name", { hasText: /^chart$/ }) }).click();
+  ok("the chart tile adds a chart", await until(() => !!find(read().screens)));
+  await page.getByLabel("Chart data").fill("Mon\t42\nTue\t38\nWed\t51");
+  ok("typed numbers become its data", await until(() => JSON.stringify(find(read().screens)?.data) === JSON.stringify([["Mon", 42], ["Tue", 38], ["Wed", 51]])), JSON.stringify(find(read().screens)));
+  ok("and it draws them", await until(async () => (await page.locator(".canvas").textContent())?.includes("51")));
+  // put the view back on the first screen for the tests after this (Esc steps out one level at a time)
+  await page.evaluate(() => document.activeElement?.blur());
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Escape");
+  await page.locator(".screen-list button").first().click();
+  await sleep(400);
+  await page.keyboard.press("Escape");
+}
+
 // arranging: Shift-click two drawings, line them up, group them, lock them, then copy one's style onto the other
 {
   const shapes = () => read().screens.menu.shapes ?? [];

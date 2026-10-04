@@ -2,6 +2,7 @@ import { isHex } from "../vendor/sketch/tokens";
 import { formatIssues, suggest, type Issue, type Result } from "../vendor/sketch/suggest";
 import { findUndrawable, undrawableHint } from "../vendor/sketch/glyphs";
 import { isCrop } from "../vendor/sketch/crop";
+import { chartRows } from "../vendor/sketch/chart";
 import { layoutScreen, linksOf, typeOf, type Layout } from "./layout";
 import { textWidth } from "./text";
 import { CHROMES, COMMON, COMPONENTS, DEVICES, ICONS, PINS, propsOf, TYPES, type PropDef } from "./vocab";
@@ -69,8 +70,15 @@ export function validate(input: unknown): Result {
       case "enum": if (typeof v !== "string" || !t.values.includes(v)) { const s = typeof v === "string" ? suggest(v, t.values) : undefined; err(path, `"${String(v)}" isn't an option.`, s ? `Did you mean "${s}"?` : `Use one of: ${t.values.join(", ")}`); } break;
       case "icon": if (typeof v !== "string" || !(ICONS as readonly string[]).includes(v)) { const s = typeof v === "string" ? suggest(v, ICONS) : undefined; err(path, `"${String(v)}" isn't an icon.`, s ? `Did you mean "${s}"?` : "Run `wf vocab icons` for the list."); } break;
       case "screen": goesOk(path, v); break;
+      case "chartdata": {
+        if (!Array.isArray(v) && !isObj(v)) { err(path, "must be a list of [label, number] pairs.", "e.g. [[\"Mon\", 42], [\"Tue\", 38]]"); break; }
+        const rows = chartRows(v), raw = Array.isArray(v) ? v.length : Object.keys(v).length;
+        if (!rows.length) warn(path, "This chart has no numbers yet.", "e.g. [[\"Mon\", 42], [\"Tue\", 38]]");
+        else if (rows.length < raw) warn(path, `${raw - rows.length} of the rows don't have a number, so they're left out.`, "Each row is [label, number].");
+        break;
+      }
       case "strings":
-        if (key === "active" && typeof v === "string") break;
+        if ((key === "active" || key === "highlight") && typeof v === "string") break;
         if (!Array.isArray(v) || v.some((x) => typeof x !== "string" && typeof x !== "number")) err(path, "must be a list of text, e.g. [\"One\", \"Two\"].");
         break;
       case "rows": if (!Array.isArray(v) || v.some((r) => !Array.isArray(r))) err(path, "must be a list of rows, each a list of cells: [[\"#214\", \"$5.25\"]]."); break;
@@ -125,6 +133,11 @@ export function validate(input: unknown): Result {
       }
       if (k === "at" && !topLevel) warn(`${path}.at`, "Free placement only works for things directly on a screen, so it's ignored here.", "Move it to the screen's children, or drop \"at\".");
       checkProp(`${path}.${k}`, k, v, d, type);
+    }
+    if (type === "chart" && res.highlight !== undefined && res.data !== undefined) {
+      // a call-out has to name a row that's there
+      const labels = chartRows(res.data).map((r) => r[0]);
+      for (const h of Array.isArray(res.highlight) ? res.highlight : [res.highlight]) if (!labels.some((l) => l.trim().toLowerCase() === String(h).trim().toLowerCase())) { const s = suggest(String(h), labels); err(`${path}.highlight`, `There's no "${String(h)}" in the data.`, s ? `Did you mean "${s}"?` : `Labels: ${labels.join(", ")}`); }
     }
     if (COMPONENTS[type].container && !Array.isArray(res.children) && type !== "sheet" && type !== "dialog") warn(path, `This ${type} is empty.`, "Give it \"children\".");
   };

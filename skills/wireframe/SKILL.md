@@ -53,6 +53,9 @@ path. **Below, `wf` is short for that whole command.**
   `"variant": "primary"`: the main action. Everything else is secondary, outline or a link.
 - **Real words.** Real labels, prices, names and statuses ("Preparing · about 4 min", "$5.25"), never lorem
   ipsum. Use `{ "type": "text", "lines": 3 }` squiggles only for body copy whose wording doesn't matter yet.
+- **Real numbers on charts, when you have them.** A `chart` with `data` (`[["Mon", 42], ["Tue", 38]]`) draws
+  them roughly, with each number written on it; `highlight` the one the screen is about. Leave `data` out for a
+  placeholder when the numbers don't matter yet. Never invent numbers that look like real findings.
 - **Link everything that goes somewhere.** Buttons, list items, tabs and links take `"goes": "<screen id>"`
   (or `"back"`). The canvas draws an arrow for each and Play mode clicks through them.
 - **Show the unhappy paths.** Empty states, errors, loading and "it's running late" are their own screens

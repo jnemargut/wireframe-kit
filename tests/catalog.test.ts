@@ -93,3 +93,31 @@ describe("catalog", () => {
     expect(pay.hots.map((h: { goes: string }) => h.goes).sort()).toEqual(["back", "menu"]);
   });
 });
+
+describe("charts with real numbers", () => {
+  const data = [["Mon", 42], ["Tue", 38], ["Wed", 51], ["Thu", 47]];
+  it("draws every kind with its labels and numbers", () => {
+    for (const kind of ["bar", "hbar", "line", "funnel", "pie", "donut"]) {
+      const f = one({ type: "chart", kind, data, highlight: "Wed", unit: "orders", label: "This week" });
+      expect(validate(f).errors, kind).toEqual([]);
+      const svg = screenSVG(f, "s");
+      for (const [l] of data) expect(svg, kind).toContain(String(l));
+      expect(svg, kind).not.toMatch(/NaN|Infinity/);
+    }
+    expect(screenSVG(one({ type: "chart", data }), "s")).toContain("51");
+  });
+
+  it("without data it's still the placeholder", () => {
+    const f = one({ type: "chart", kind: "line", label: "Orders" });
+    expect(validate(f).errors).toEqual([]);
+    expect(screenSVG(f, "s")).not.toContain("Add some numbers");
+  });
+
+  it("checks the numbers and the call-out", () => {
+    expect(validate(one({ type: "chart", data: "lots" })).errors.map((e) => e.message).join()).toMatch(/\[label, number\]/);
+    expect(validate(one({ type: "chart", data: [] })).warnings.map((e) => e.message).join()).toMatch(/no numbers yet/);
+    expect(validate(one({ type: "chart", data, highlight: "Wedn" })).errors.map((e) => `${e.message} ${e.hint}`).join()).toMatch(/Did you mean "Wed"/);
+    expect(validate(one({ type: "chart", data: { Yes: 3, No: 1 }, kind: "pie" })).errors).toEqual([]);
+  });
+});
+

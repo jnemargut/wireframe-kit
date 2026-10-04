@@ -9,6 +9,7 @@ import { Icon } from "../render/icons";
 import { COLORS } from "../../vendor/sketch/tools";
 import { getAt, keyOf, pathOf, setProp, type Sel } from "./model";
 import { SHAPE_FILLS, SHAPE_WEIGHTS, TEXT_SIZES } from "../../vendor/sketch/shapes";
+import { chartRows, chartText, parseChartText } from "../../vendor/sketch/chart";
 
 export interface InspectorActions {
   edit: (next: WireframeFile, coalesce?: string) => void;
@@ -119,6 +120,13 @@ function ItemsEditor({ type, items, screens, onChange }: { type: string; items: 
   );
 }
 
+/** A chart's numbers as text, "label, number" a line; cells pasted from a spreadsheet work too. Kept as typed. */
+function ChartDataIn({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+  const [text, setText] = useState(() => chartText(chartRows(value)));
+  return <textarea aria-label="Chart data" className="mono-in" rows={Math.min(10, Math.max(4, chartRows(value).length + 1))} value={text} spellCheck={false} placeholder={"Mon, 42\nTue, 38"}
+    onChange={(e) => { setText(e.target.value); const r = parseChartText(e.target.value).rows; onChange(r.length ? r : undefined); }} />;
+}
+
 function Field({ k, d, node, path, screens, a, focusText }: { k: string; d: PropDef; node: WNode; path: (string | number)[]; screens: string[]; a: InspectorActions; focusText: number }) {
   const v = node[k];
   const t = d.type;
@@ -131,19 +139,23 @@ function Field({ k, d, node, path, screens, a, focusText }: { k: string; d: Prop
       // turning a picture: a quarter turn clockwise per click
       if (k === "turn") { if (!node.src) return null; const cur = typeof v === "number" ? v : 0; input = <button type="button" className="btn small" onClick={() => set((cur + 90) % 360 || undefined)} title="Turn the picture a quarter turn clockwise">Turn ↻{cur ? ` (${cur}°)` : ""}</button>; break; }
       input = <NumIn value={v} min={t.min} max={t.max} onChange={set} />; break;
-    case "bool": if (k === "mirror" && !node.src) return null; input = <input type="checkbox" checked={v === true} onChange={(e) => set(e.target.checked ? true : undefined)} />; break;
+    case "bool": if (k === "mirror" && !node.src) return null;
+      // a chart's numbers show unless switched off
+      if (k === "values") { input = <input type="checkbox" checked={v !== false} onChange={(e) => set(e.target.checked ? undefined : false)} />; break; }
+      input = <input type="checkbox" checked={v === true} onChange={(e) => set(e.target.checked ? true : undefined)} />; break;
     case "enum": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">default</option>{t.values.map((x) => <option key={x}>{x}</option>)}</select>; break;
     case "icon": input = <IconPicker value={v == null ? "" : String(v)} onChange={set} />; break;
     case "screen": input = <select value={v == null ? "" : String(v)} onChange={(e) => set(e.target.value || undefined)}><option value="">no link</option>{screens.map((s) => <option key={s} value={s}>→ {s}</option>)}<option value="back">← back</option></select>; break;
     case "strings": input = <textarea rows={Math.max(2, Array.isArray(v) ? v.length : 1)} value={Array.isArray(v) ? v.join("\n") : v == null ? "" : String(v)} onChange={(e) => set(e.target.value.split("\n").filter((x, i, arr) => x || i < arr.length - 1))} placeholder="one per line" />; break;
+    case "chartdata": input = <ChartDataIn key={path.join(".")} value={v} onChange={set} />; break;
     case "rows": input = <textarea rows={4} value={Array.isArray(v) ? (v as unknown[][]).map((r) => (Array.isArray(r) ? r.join(" | ") : String(r))).join("\n") : ""} onChange={(e) => set(e.target.value.split("\n").filter(Boolean).map((r) => r.split("|").map((c) => c.trim())))} placeholder="cell | cell | cell" />; break;
     case "crop": if (!node.src) return null; input = <span className="crop-row"><button type="button" className="btn small" onClick={() => a.crop(path)}>{Array.isArray(v) ? "Change crop…" : "Crop…"}</button>{Array.isArray(v) ? <button type="button" className="btn small ghost" onClick={() => set(undefined)}>Uncrop</button> : null}</span>; break;
     case "items": input = <ItemsEditor type={String(node.type)} items={Array.isArray(v) ? (v as Item[]) : []} screens={screens} onChange={set} />; break;
     default: return null;
   }
   return (
-    <label className={`field${t.kind === "bool" ? " inline" : ""}${t.kind === "items" ? " wide" : ""}`} title={d.doc}>
-      <span>{humanize(k)}</span>{input}
+    <label className={`field${t.kind === "bool" ? " inline" : ""}${t.kind === "items" || t.kind === "chartdata" ? " wide" : ""}`} title={d.doc}>
+      <span>{k === "values" ? "Show the numbers" : humanize(k)}</span>{input}
     </label>
   );
 }

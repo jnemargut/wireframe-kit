@@ -783,6 +783,61 @@
           "description": "Shade every other row.",
           "type": "boolean"
         },
+        "data": {
+          "description": "The numbers: [[\"Mon\", 42], [\"Tue\", 38]] or { \"Mon\": 42 }.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "highlight": {
+          "description": "Label(s) to call out; the rest stay light.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              }
+            }
+          ]
+        },
+        "unit": {
+          "description": "Goes on every number: \"%\", \"$\", \"orders\".",
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "values": {
+          "description": "false hides the numbers.",
+          "type": "boolean"
+        },
         "vertical": {
           "description": "Stack the steps down the screen (a wizard's side list).",
           "type": "boolean"

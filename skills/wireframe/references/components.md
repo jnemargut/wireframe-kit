@@ -660,13 +660,17 @@ A data table.
 
 ### `chart`
 
-A chart placeholder.
+A chart. Without data it's a placeholder; with data it draws the real numbers, roughly, with each number written on it. Highlight calls one out.
 
-  - `kind`: Chart type (default bar). (`bar`, `line`, `pie`, `donut`)
+  - `kind`: Chart type (default bar). hbar is sideways bars, for long labels. (`bar`, `hbar`, `line`, `funnel`, `pie`, `donut`)
   - `label`: Caption.
+  - `data`: The numbers: [["Mon", 42], ["Tue", 38]] or { "Mon": 42 }.
+  - `highlight`: Label(s) to call out; the rest stay light.
+  - `unit`: Goes on every number: "%", "$", "orders".
+  - `values`: false hides the numbers.
 
 ```json
-{"type":"chart","kind":"line","label":"Orders this week"}
+{"type":"chart","kind":"line","label":"Orders this week","data":[["Mon",42],["Tue",38],["Wed",51],["Thu",47],["Fri",64]],"highlight":"Fri"}
 ```
 
 ### `map`

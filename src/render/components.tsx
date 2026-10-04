@@ -10,6 +10,7 @@ import { itemText, type Item } from "../types";
 import { hasIcon, Icon } from "./icons";
 import { crossBox, dark, hint, iconFor, ink, line, Ln, mid, mid1, muted, paper, Para, R, s, soft, squiggle, star, SW, T, THIN, white, type DrawCtx, type Drawn } from "./prims";
 import { Cursor, drawMore, menuPanel, Spin, withState } from "./more";
+import { SketchChart, chartRows } from "../../vendor/sketch/chart";
 
 export type { DrawCtx, Drawn };
 
@@ -360,6 +361,8 @@ function drawBase(b: Box, ctx: DrawCtx): Drawn {
       const kind = s(n.kind) || "bar";
       const ch = h - (n.label ? 24 : 0);
       const lab = n.label ? <T x={x + w / 2} y={y + h - 6} text={fit(s(n.label), "hand", 15, w)} size={15} fill={muted} anchor="middle" /> : undefined;
+      // real numbers, when there are some; otherwise the placeholder below
+      if (chartRows(n.data).length) return { shape: <SketchChart spec={{ kind, data: n.data, highlight: n.highlight as string | string[] | undefined, unit: typeof n.unit === "string" ? n.unit : undefined, values: n.values as boolean | undefined }} x={x} y={y} w={w} h={ch} />, words: lab };
       if (kind === "pie" || kind === "donut") {
         const r = Math.min(w, ch) / 2 - 6, cx = x + w / 2, cy = y + ch / 2;
         const ang = [0.0, 0.38, 0.66, 0.84].map((f) => -Math.PI / 2 + f * Math.PI * 2);

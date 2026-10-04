@@ -16,6 +16,7 @@ function propSchema(p: PropDef): Record<string, unknown> {
     case "items": return { ...base, type: "array", items: { oneOf: [{ type: ["string", "number"] }, { $ref: "#/definitions/item" }] } };
     case "children": return { ...base, type: "array", items: { $ref: "#/definitions/node" } };
     case "point": return { ...base, type: "array", items: { type: "number" }, minItems: 2, maxItems: 2 };
+    case "chartdata": return { ...base, oneOf: [{ type: "array", items: { type: "array", items: [{ type: "string" }, { type: "number" }], minItems: 2, maxItems: 2 } }, { type: "object", additionalProperties: { type: "number" } }] };
     case "crop": return { ...base, type: "array", items: { type: "number", minimum: 0, maximum: 1 }, minItems: 4, maxItems: 4 };
   }
 }

@@ -3,6 +3,7 @@
  * and the editor's palette and inspector. A closed list on purpose, so agents can't invent things that
  * don't render. Anything missing becomes a labeled `sketch` box.
  */
+import { CHART_KINDS } from "../vendor/sketch/chart";
 
 export type PropKind =
   | { kind: "text" }
@@ -16,6 +17,7 @@ export type PropKind =
   | { kind: "strings" }
   | { kind: "point" }
   | { kind: "crop" }
+  | { kind: "chartdata" }
   | { kind: "children" };
 
 export interface PropDef { type: PropKind; doc: string }
@@ -237,8 +239,9 @@ const defs: ComponentDef[] = [
   { type: "table", category: "content", defaultWidth: "fill", doc: "A data table.",
     props: { columns: strings("Column headings."), rows: { type: { kind: "rows" }, doc: "Rows: arrays of cell text." }, select: b("A checkbox column."), selected: { type: { kind: "strings" }, doc: "Selected rows, by number from 1 (ticked and highlighted), e.g. [\"2\"]." }, sort: t("The column it's sorted by (an arrow in the heading)."), actions: b("A ⋮ menu at the end of every row."), striped: b("Shade every other row.") },
     example: { type: "table", columns: ["Order", "Store", "Total"], rows: [["#214", "Main St", "$5.25"], ["#198", "Main St", "$9.80"]] } },
-  { type: "chart", category: "content", defaultWidth: "fill", doc: "A chart placeholder.",
-    props: { kind: e(["bar", "line", "pie", "donut"], "Chart type (default bar)."), label: t("Caption.") }, example: { type: "chart", kind: "line", label: "Orders this week" } },
+  { type: "chart", category: "content", defaultWidth: "fill", doc: "A chart. Without data it's a placeholder; with data it draws the real numbers, roughly, with each number written on it. Highlight calls one out.",
+    props: { kind: e(CHART_KINDS, "Chart type (default bar). hbar is sideways bars, for long labels."), label: t("Caption."), data: { type: { kind: "chartdata" }, doc: "The numbers: [[\"Mon\", 42], [\"Tue\", 38]] or { \"Mon\": 42 }." }, highlight: strings("Label(s) to call out; the rest stay light."), unit: t("Goes on every number: \"%\", \"$\", \"orders\"."), values: b("false hides the numbers.") },
+    example: { type: "chart", kind: "line", label: "Orders this week", data: [["Mon", 42], ["Tue", 38], ["Wed", 51], ["Thu", 47], ["Fri", 64]], highlight: "Fri" } },
   { type: "map", category: "content", defaultWidth: "fill", doc: "A map placeholder with a pin.",
     props: { label: t("Caption.") }, example: { type: "map", label: "Corner Coffee, Main St" } },
   { type: "video", category: "content", defaultWidth: "fill", doc: "A video placeholder (16:9 with a play button).",
