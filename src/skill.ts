@@ -1,3 +1,4 @@
+import { plainWordsMd } from "../vendor/sketch/plain";
 import { CATEGORIES, COMMON, COMPONENTS, DEVICES, ICONS } from "./vocab";
 
 /** Shorthand used throughout the docs for "run this skill's bundled script". Defined at the top of SKILL.md. */
@@ -51,6 +52,10 @@ path. **Below, \`${CLI}\` is short for that whole command.**
 8. **For a storyboard** (Storyboard Kit): \`${CLI} render <file>\` writes \`<name>.<screen>.png\` next to the file,
    and a storyboard panel shows it with \`"screen": "./<name>.wireframe.json#<screen>"\`. Storyboard Kit re-renders
    it automatically when the wireframe changes.
+
+${plainWordsMd("screen titles and the notes beside screens")}
+The words inside a screen are different: write them the way the real product would (short labels, real prices,
+real names).
 
 ## Craft: what makes a wireframe useful
 

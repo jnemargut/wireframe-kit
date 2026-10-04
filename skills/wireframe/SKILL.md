@@ -47,6 +47,44 @@ path. **Below, `wf` is short for that whole command.**
    and a storyboard panel shows it with `"screen": "./<name>.wireframe.json#<screen>"`. Storyboard Kit re-renders
    it automatically when the wireframe changes.
 
+## Write it plainly
+
+Everything you write here (screen titles and the notes beside screens) should sound like you telling a teammate across the table. If it sounds
+like a headline, a slogan or a slide from a consultant, write it again.
+
+- **Whole sentences, ordinary words.** Say who does what. "People don't mind when a tool comes back a day late."
+  Not "Owners shrug at late."
+- **One idea in a sentence.** No semicolons. No colon bolting two ideas together. If there are two things to say,
+  write two short sentences.
+- **Keep the small words** (the, a, their, when, because, so). Leaving them out is what makes writing read like a
+  telegram.
+- **Say the thing, don't name it.** "We don't know how often tools come back late" is clearer than "The claim has
+  no number behind it."
+- **The plainest word wins.** "Use", not "leverage". "Show", not "surface". "Problem", not "pain point". "The
+  hard part", not "friction". "Depends on", not "rests on" or "hinges on". "Because", not "due to".
+- **No clever turns.** No metaphors, no slogans, no lists of three for rhythm. If a phrase is showing off, cut
+  it.
+- **Numbers and names as they are.** "8 of 12 people". "The Pay button". Not "most users" or "the primary action".
+- **Short.** A title is one plain sentence you could say out loud, about ten words at most. A description is one
+  or two short sentences. A sticky is a dozen words. A step in a flow is the one place for a clipped label: a
+  few words, verb first ("Asks the barista").
+- **Read it out loud.** If you wouldn't say it that way to a friend, change it until you would.
+
+| Instead of | Write |
+|---|---|
+| Owners shrug at late; hidden damage is what stops them lending | People don't mind late returns. They stop lending when tools come back broken. |
+| The ask rests on one claim with no number behind it | The PM says people return things late. We don't know how often. |
+| The fee acts after the loan, and never looks at the tool | A late fee doesn't check whether the tool is broken. |
+| Try first: check the tool at handover, let the app do the asking | A cheaper idea to try first |
+| Late, nobody tells them, so they ask a human | When the order is late, people ask the barista |
+| Trust lost | After this, he stops ordering ahead |
+| Surface the real queue to reduce friction | Show people the real queue so they know how long it'll be |
+
+The same goes for the message you send when you hand it over.
+
+The words inside a screen are different: write them the way the real product would (short labels, real prices,
+real names).
+
 ## Craft: what makes a wireframe useful
 
 - **One job per screen.** Know what the person is trying to do there, and make exactly one button
