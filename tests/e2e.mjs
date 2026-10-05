@@ -158,6 +158,13 @@ const k = dev.width / 390;
 await page.mouse.click(dev.x + (item.x + item.w / 2) * k, dev.y + (item.y + item.h / 2) * k);
 ok("play follows a link", await until(async () => (await page.locator(".play-title").textContent()) === "Oat latte"));
 await page.keyboard.press("d");
+{
+  // the sharpie's colors open above the bar, all of it on screen
+  await page.locator(".play-bar .pen-dot").first().click();
+  const pop = await page.locator(".pen-pop").boundingBox(), vp = page.viewportSize();
+  ok("the sharpie's colors open fully on screen", !!pop && pop.y >= 0 && pop.y + pop.height <= vp.height && pop.x >= 0 && pop.x + pop.width <= vp.width, JSON.stringify(pop));
+  await page.locator(".play-bar .pen-dot").first().click();
+}
 const pd = await page.locator(".play-device").boundingBox();
 await page.mouse.move(pd.x + 40, pd.y + 200); await page.mouse.down();
 for (let i = 1; i < 8; i++) await page.mouse.move(pd.x + 40 + i * 15, pd.y + 200 + (i % 2) * 10);
