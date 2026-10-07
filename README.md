@@ -6,7 +6,7 @@ You tell Claude Code (or Codex) the flow you have in mind. It sketches every scr
 a canvas where you see the whole thing at once. You poke at it, click through it like the real app, and hand
 it to your team before anyone starts arguing about pixels.
 
-![Wireframe Kit sizzle reel](docs/sizzle-7cb71bd.gif)
+![Wireframe Kit sizzle reel](docs/sizzle-3563bd3.gif)
 
 ## Why though
 
@@ -30,7 +30,7 @@ which draws comic strips of a customer's whole day. Point any phone in a storybo
 (`"screen": "./order-ahead.wireframe.json#status"`) and it shows up on the device, in teal, because teal is
 how storyboards mark the product.
 
-![A storyboard using real wireframe screens](docs/in-a-storyboard-3eec28d.png)
+![A storyboard using real wireframe screens](docs/in-a-storyboard-33b7baa.png)
 
 Change the wireframe and the storyboard catches up on its own. Now you can see the screen *and* the moment
 someone is staring at it, waiting for a latte that said 4 minutes 12 minutes ago.
